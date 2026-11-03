@@ -1,0 +1,9 @@
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/
+android/local.properties
+*.apk
+
+# downloads from the claude.ai chat, not part of the project
+Claude outputs/

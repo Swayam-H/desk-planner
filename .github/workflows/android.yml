@@ -1,0 +1,33 @@
+# On every push to main: put the planner in the app, build the APK, publish it as a release
+# so phones can always grab releases/latest/download/desk-planner.apk
+name: android
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
+      - name: Build APK
+        run: |
+          mkdir -p android/app/src/main/assets
+          cp desk-planner.html android/app/src/main/assets/index.html
+          cd android && gradle assembleDebug --no-daemon
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk desk-planner.apk
+          gh release create "build-${{ github.run_number }}" desk-planner.apk \
+            --title "build ${{ github.run_number }}" --notes "built from ${{ github.sha }}" --latest
