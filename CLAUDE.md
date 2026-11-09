@@ -27,6 +27,9 @@ Keep it a single file: the wallpaper apps point at one local `.html` path.
   (`window.open`, or `AndroidBridge.openUrl` in the app).
 - In Lively, keyboard input must be enabled for the command line to work (this hides desktop icons),
   so every feature should also be reachable by clicking where practical.
+- Lively keeps `localStorage` only with its **disk cache** setting on (`CefDiskCache`); otherwise every wallpaper load gets
+  a fresh temp WebView2 profile and the planner starts over. Lively also cancels every download, so `doExport` (detected
+  via `LIVELY`: `chrome.webview` and no `AndroidBridge`) just says so; a working sync counts as a backup in `updateBackup`.
 
 ## Layout
 

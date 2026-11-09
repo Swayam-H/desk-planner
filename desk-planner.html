@@ -1421,7 +1421,7 @@ function run(line){
     }
     case 'hide':case 'private':setPrivate(true);return say('personal text hidden. show or p brings it back','ok');
     case 'show':setPrivate(false);return say('');
-    case 'backup':case 'export':doExport();return say('backup downloaded','ok');
+    case 'backup':case 'export':return doExport();
     case 'sync':{
       if(rest[0]==='off'){S.sync=null;save();showSync();return say('sync is off on this device','ok')}
       if(rest[0]&&rest[0].length>20){say('connecting…');connectSync(rest[0]).then(m=>say(m,S.sync&&S.sync.gist?'ok':'err'));return}
@@ -1496,22 +1496,26 @@ function saveFile(name,text){
   if(window.AndroidBridge&&AndroidBridge.saveFile){AndroidBridge.saveFile(name,text);return}
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;a.click();
 }
+/* Lively (a WebView2 host, unlike the android app) cancels every download, so export can't make a file there */
+const LIVELY=!!(window.chrome&&chrome.webview)&&!window.AndroidBridge;
 function doExport(){
+  if(LIVELY)return say('lively blocks downloads, so export cannot save a file here. sync keeps a copy (with history) on github','err');
   S.lastBackup=Date.now();save();
   const out={...S};delete out.sync;
   saveFile(`planner-backup-${ymd(new Date())}.json`,JSON.stringify(out,null,2));
-  updateBackup();
+  updateBackup();say('backup downloaded','ok');
 }
-/* Everything lives in this wallpaper's own storage, so nudge for a backup once a week */
+/* Everything lives in this wallpaper's own storage, so nudge for a backup once a week (a working sync counts) */
 function updateBackup(){
   const hasData=S.tasks.length+Object.keys(S.events).length+Object.keys(S.log).length+S.countdowns.length>2;
   const age=S.lastBackup?daysBetween(new Date(S.lastBackup),new Date()):null;
-  const due=hasData&&(age===null||age>=7);
+  const synced=!!(S.sync&&S.sync.gist&&!S.sync.err);
+  const due=hasData&&!synced&&(age===null||age>=7);
   $('backupBtn').hidden=!due;
   if(due)$('backupBtn').textContent=age===null?'never backed up':`backup ${age}d ago`;
   $('backupBtn').classList.toggle('old',due&&age!==null&&age>=14);
 }
-$('exportBtn').onclick=doExport;$('backupBtn').onclick=()=>{doExport();say('backup downloaded','ok')};
+$('exportBtn').onclick=$('backupBtn').onclick=doExport;
 $('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
@@ -1652,6 +1656,7 @@ function showSync(){
   b.classList.toggle('ok',!!(S.sync&&S.sync.gist&&!S.sync.err));b.classList.toggle('bad',!!(S.sync&&S.sync.err));
   b.textContent=!S.sync||!S.sync.gist?'sync':S.sync.err?(S.sync.err==='offline'?'sync offline':'sync error'):'synced';
   b.title=S.sync&&S.sync.gist?(S.sync.err||`last synced ${ago(S.sync.at)}`):'Sync with your other devices';
+  updateBackup();
 }
 function renderSyncDlg(){
   const on=S.sync&&S.sync.gist;
