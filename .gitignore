@@ -7,3 +7,7 @@ android/local.properties
 
 # downloads from the claude.ai chat, not part of the project
 Claude outputs/
+
+# your github sync token for lively (read by the planner, never commit it)
+sync-token.txt
+sync-token.txt.txt

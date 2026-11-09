@@ -28,6 +28,14 @@ button,input,select,textarea{font:inherit;color:inherit;background:none;border:n
 button{cursor:pointer}
 :focus-visible{outline:1px solid var(--amber);outline-offset:1px}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--line)}
+/* lively passes clicks to the wallpaper but not the mouse wheel or drags, so on the wallpaper layout the scrollbars
+   are wide enough to click (a click on the track scrolls by a page); the thumb still looks 4px wide */
+@media (min-width:761px){
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--line);border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background-color:var(--dim)}
+  ::-webkit-scrollbar-corner{background:transparent}
+}
 /* faint scanlines for the CRT feel */
 body::after{content:"";position:fixed;inset:0;pointer-events:none;
   background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px)}
@@ -171,7 +179,8 @@ body.private .mk,body.private textarea.notes{filter:blur(5px);transition:filter 
 .sched li:hover .am button{color:var(--dim)}
 .sched .am button:hover{color:var(--amber)}
 .sched .am .y{color:var(--green)}.sched .am .no{color:var(--red)}
-.sched .am .y,.sched .am .no{cursor:pointer}
+.sched .am .lv{color:var(--cyan)}
+.sched .am .y,.sched .am .no,.sched .am .lv{cursor:pointer}
 .tasks{list-style:none}
 .tasks li{display:flex;gap:8px;cursor:pointer;align-items:baseline}
 .tasks li .no{color:var(--line);width:2ch;text-align:right;flex-shrink:0}
@@ -193,6 +202,7 @@ body.private .mk,body.private textarea.notes{filter:blur(5px);transition:filter 
 .dls div{display:flex;gap:8px}
 .dls .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dls .when{color:var(--red)}
+.dls .past{opacity:.45}
 textarea.notes{flex:1;min-height:0;resize:none;width:100%;line-height:1.5}
 .empty{color:var(--dim)}
 
@@ -222,7 +232,7 @@ dialog .title{position:absolute;top:-.8em;left:12px;background:var(--bg);padding
 .field{border-bottom:1px solid var(--line);padding:2px 0}
 .field:focus{border-color:var(--amber)}
 select.field option{background:var(--bg)}
-.dlist{list-style:none;margin-bottom:14px}
+.dlist{list-style:none;margin-bottom:14px;max-height:45vh;overflow-y:auto}
 .dlist li{display:flex;gap:10px}
 .dlist li .n{flex:1}
 .form{display:grid;grid-template-columns:1fr 9ch 11ch;gap:12px}
@@ -245,6 +255,8 @@ select.field option{background:var(--bg)}
 .logv .at{color:var(--dim);flex-shrink:0}
 #examDlg{width:min(700px,94vw)}
 #attDlg{width:min(1040px,96vw)}
+#attText{max-height:62vh;overflow-y:auto}
+.tt tr.bad .field{border-color:var(--red)}
 .attv{display:grid;grid-template-columns:auto auto auto auto 1fr auto;gap:6px 14px;align-items:baseline}
 .attv .cname,.attv .c{white-space:nowrap}
 .attv .k{font-weight:500}
@@ -461,6 +473,7 @@ select.field option{background:var(--bg)}
 <dialog id="ttDlg">
   <span class="title">timetable, repeats every week</span>
   <div class="ttwrap"><table class="tt"><tbody id="ttBody"></tbody></table></div>
+  <p class="hint" id="ttMsg" style="color:var(--red);margin:10px 0 0" hidden></p>
   <div class="actions" style="justify-content:space-between">
     <button class="btn" id="ttAdd">[+ add class]</button>
     <span><button class="btn" id="ttCancel">[cancel]</button> <button class="btn go" id="ttSave">[save]</button></span>
@@ -471,10 +484,10 @@ select.field option{background:var(--bg)}
   <span class="title">margins</span>
   <p class="hint">Pixels to leave free for your taskbar, dock, menu bar or desktop icons.</p>
   <div class="form" style="grid-template-columns:repeat(4,1fr)">
-    <label>top<input class="field" id="mT" type="number" min="0"></label>
-    <label>right<input class="field" id="mR" type="number" min="0"></label>
-    <label>bottom<input class="field" id="mB" type="number" min="0"></label>
-    <label>left<input class="field" id="mL" type="number" min="0"></label>
+    <label>top<input class="field" id="mT" type="number" min="0" max="300"></label>
+    <label>right<input class="field" id="mR" type="number" min="0" max="300"></label>
+    <label>bottom<input class="field" id="mB" type="number" min="0" max="300"></label>
+    <label>left<input class="field" id="mL" type="number" min="0" max="300"></label>
   </div>
   <div class="actions"><button class="btn" id="setCancel">[cancel]</button><button class="btn go" id="setSave">[save]</button></div>
 </dialog>
@@ -518,6 +531,9 @@ const KEY='deskPlanner.v1';
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const $=id=>document.getElementById(id);
+/* Lively (a WebView2 host, unlike the android app): serves this page from a folder-specific https://….localhost address,
+   so every copy added to Lively starts with empty storage; it also cancels downloads and passes no mouse wheel */
+const LIVELY=!!(window.chrome&&chrome.webview)&&!window.AndroidBridge;
 const pad=n=>String(n).padStart(2,'0');
 const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const fromYmd=s=>new Date(s+'T00:00');
@@ -594,34 +610,74 @@ let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!S||!S.timetable)S=sampleData();
 const DEF_LAYOUT={pt:28,pr:24,pb:64,pl:24};
+const MAX_MARGIN=300;   // bigger margins would push the buttons (margins included) off the screen
 /* this semester's courses get a colour on first run; change with: color <course> <colour> */
 const PRESET_COLORS={aad:'#7fb8e8',osn:'#e88aa8',dna:'#7fd1b0',prob:'#f0a07a',science:'#b9a0e8',esw:'#b5d16a'};
+/* Data from older versions, a backup file or the sync gist is repaired here before anything renders it: one malformed
+   entry would otherwise throw while rendering (blank wallpaper, frozen clock) or end up unescaped in an attribute.
+   Values are fixed in place and unknown fields kept; only entries with nothing usable left are dropped. */
+const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+const arr=v=>Array.isArray(v)?v:[];
+const txt=v=>typeof v==='string'?v:v==null?'':String(v);
+const isRec=x=>x&&typeof x==='object';
+function fixHm(t){const m=/^(\d{1,2}):(\d{1,2})$/.exec(txt(t).trim());return m&&+m[1]<24&&+m[2]<60?`${pad(+m[1])}:${pad(+m[2])}`:null}
+function fixYmd(s){const m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(txt(s).trim());if(!m)return null;
+  const k=`${m[1]}-${pad(+m[2])}-${pad(+m[3])}`;return ymd(fromYmd(k))===k?k:null}
+/* {date: [entries]} maps (events, log): keys repaired, unusable entries dropped, empty days removed */
+function fixDays(o,fix){const out={};for(const k in obj(o)){const key=fixYmd(k),l=arr(o[k]).filter(x=>isRec(x)&&txt(x.t).trim());
+  if(!key||!l.length)continue;l.forEach(fix);out[key]=(out[key]||[]).concat(l)}return out}
 function normalize(){
-  S.events=S.events||{};S.tasks=S.tasks||[];S.countdowns=S.countdowns||[];
-  S.focusLog=S.focusLog||{};S.links=Object.assign({},DEF_LINKS,S.links||{});
-  S.layout=S.layout||{...DEF_LAYOUT};S.sem=S.sem||null;S.focusRun=S.focusRun||null;
-  S.colors=S.colors||{};S.log=S.log||{};S.fortunes=S.fortunes||[];
+  S.timetable=arr(S.timetable).filter(c=>{if(!isRec(c))return false;const s=fixHm(c.s),e=fixHm(c.e),d=+c.d;
+    if(!s||!e||!Number.isInteger(d)||d<0||d>6||!txt(c.t).trim())return false;c.s=s;c.e=e;c.d=d;c.t=txt(c.t);return true});
+  S.events=fixDays(S.events,e=>{e.t=txt(e.t);if(e.time)e.time=fixHm(e.time)||''});
+  S.log=fixDays(S.log,x=>{x.t=txt(x.t);x.at=fixHm(x.at)||''});
+  S.tasks=arr(S.tasks).filter(t=>isRec(t)&&txt(t.t).trim());
+  S.tasks.forEach(t=>{t.t=txt(t.t);if(t.pri!=null){const p=Math.round(+t.pri);t.pri=p>=2?2:p>=1?1:0}
+    if(t.done!=null)t.done=!!t.done;if(t.due!=null)t.due=fixYmd(t.due);if(t.every!=null&&!/^(day|week|w[0-6])$/.test(t.every))t.every=null});
+  S.countdowns=arr(S.countdowns).filter(c=>isRec(c)&&fixYmd(c.date));S.countdowns.forEach(c=>{c.date=fixYmd(c.date);c.t=txt(c.t)});
+  S.exams=arr(S.exams).filter(e=>isRec(e)&&fixYmd(e.date)&&txt(e.c).trim());
+  S.exams.forEach(e=>{e.date=fixYmd(e.date);e.c=txt(e.c);if(e.time)e.time=fixHm(e.time)||'';
+    e.topics=arr(e.topics).filter(t=>isRec(t)&&txt(t.t).trim());e.topics.forEach(t=>{t.t=txt(t.t);t.done=!!t.done})});
+  const fl=obj(S.focusLog);S.focusLog={};for(const k in fl){const key=fixYmd(k),v=+fl[k];if(key&&v>0&&isFinite(v))S.focusLog[key]=(S.focusLog[key]||0)+v}
+  const fb=obj(S.focusBy);S.focusBy={};for(const k in fb){const v=+fb[k];if(v>0&&isFinite(v))S.focusBy[k]=v}
+  const cl=obj(S.colors);S.colors={};for(const k in cl){const v=txt(cl[k]).toLowerCase();if(/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(v))S.colors[k.toLowerCase()]=v}
+  S.links=S.links?obj(S.links):{...DEF_LINKS};for(const k in S.links)if(typeof S.links[k]!=='string')delete S.links[k];
+  const at=obj(S.att),n0=v=>Math.max(0,Math.floor(+v||0));S.att={};for(const k in at){const r=obj(at[k]);S.att[k]={...r,p:n0(r.p),a:n0(r.a),l:n0(r.l)}}
+  const ah=obj(S.attHist);S.attHist={};for(const k in ah){
+    const h=arr(ah[k]).filter(x=>isRec(x)&&fixYmd(x.d)&&['p','a','l'].includes(x.m));
+    h.forEach(x=>{x.d=fixYmd(x.d);if(x.at!=null){const a=fixHm(x.at);if(a)x.at=a;else delete x.at}});if(h.length)S.attHist[k]=h}
+  const am=obj(S.attMarks);S.attMarks={};for(const k in am){const [d,t,...c]=k.split('|'),dd=fixYmd(d),tt=fixHm(t);
+    if(dd&&tt&&c.length&&['p','a','l'].includes(am[k]))S.attMarks[`${dd}|${tt}|${c.join('|')}`]=am[k]}
+  if(S.attLeave!=='present')S.attLeave='skip';
+  {const v=S.attMin==null?NaN:+S.attMin;S.attMin=v>=0&&v<=100?v:75}
+  if(S.sem){const s=fixYmd(S.sem.start),e=fixYmd(S.sem.end);S.sem=s&&e&&e>s?{start:s,end:e}:null}else S.sem=null;
+  S.fortunes=arr(S.fortunes).map(txt).filter(Boolean);S.notes=txt(S.notes);
+  S.layout={...DEF_LAYOUT,...obj(S.layout)};for(const k in DEF_LAYOUT)S.layout[k]=Math.min(MAX_MARGIN,Math.max(0,Math.round(+S.layout[k]||0)));
+  if(S.focusRun){const f=S.focusRun,len=+f.len;S.focusRun=isRec(f)&&isFinite(+f.start)&&len>0&&len<=720?{...f,start:+f.start,len}:null}else S.focusRun=null;
+  if(S.fortunePick&&!(typeof S.fortunePick.day==='string'&&Number.isInteger(S.fortunePick.i)&&S.fortunePick.i>=0))S.fortunePick=null;
+  S.ft=obj(S.ft);for(const k in S.ft)S.ft[k]=+S.ft[k]||0;
+  if(!isRec(S.sync)||typeof S.sync.token!=='string')S.sync=null;
+  if(S.mtab!=null&&!['today','cal','track','notes','more'].includes(S.mtab))delete S.mtab;
   S.theme=THEMES[S.theme]?S.theme:'auto';S.view=S.view==='week'?'week':'month';
   if(S.late===undefined)S.late=true;if(S.fortuneOn===undefined)S.fortuneOn=true;
-  S.private=!!S.private;S.lastBackup=S.lastBackup||null;S.ft=S.ft||{};S.sync=S.sync||null;
-  S.exams=S.exams||[];S.att=S.att||{};S.attMarks=S.attMarks||{};S.attHist=S.attHist||{};S.focusBy=S.focusBy||{};
-  for(const k in S.att)S.att[k].l=S.att[k].l||0;
-  if(S.attLeave!=='present')S.attLeave='skip';
-  if(S.attMin===undefined)S.attMin=75;
+  S.private=!!S.private;S.lastBackup=+S.lastBackup||null;
   if(!S.colorsSeeded){for(const k in PRESET_COLORS)if(!S.colors[k])S.colors[k]=PRESET_COLORS[k];S.colorsSeeded=true}
 }
 normalize();
+const FRESH_AT_LOAD=!!S.fresh;   // empty storage when the page loaded (the first click clears S.fresh)
 /* fields that stay on this device: layout, the open tab, privacy, sync settings and so on. everything else syncs */
 const LOCAL_KEYS=new Set(['layout','mtab','private','fresh','fortunePick','lastBackup','sync','ft','focusRun','view']);
 const syncKeys=()=>Object.keys(S).filter(k=>!LOCAL_KEYS.has(k));
 let snap={};   // JSON of each synced field as last saved, to see what changed
 function takeSnap(){snap={};for(const k of syncKeys())snap[k]=JSON.stringify(S[k])}
+let saveWarned=false;
+function store(){try{localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){return false}}
 function save(){
   S.ft=S.ft||{};let changed=false;const now=Date.now();
   // anything that changes after loading is the user's doing, so it is no longer an untouched first run
   for(const k of syncKeys()){const j=JSON.stringify(S[k]);if(j!==snap[k]){snap[k]=j;S.ft[k]=now;changed=true}}
   if(changed&&S.fresh)S.fresh=false;
-  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  if(!store()&&!saveWarned){saveWarned=true;say('could not save: browser storage is full or blocked, so changes may be lost','err')}
   if(changed&&typeof syncSoon==='function')syncSoon();
 }
 
@@ -777,11 +833,15 @@ function openDay(key){
   $('dayDlg').showModal();$('evTitle').focus();
 }
 function renderDayList(){
-  const evs=S.events[openKey]||[];
-  $('dayList').innerHTML=evs.length?evs.map((e,i)=>`<li><span class="n mk" style="color:var(${e.k==='deadline'?'--red':'--cyan'})">${e.k==='deadline'?'! ':'› '}${e.time?e.time+'  ':''}${esc(e.t)}</span><button class="btn" data-i="${i}">[remove]</button></li>`).join(''):'<li class="empty">nothing planned. add something below.</li>';
+  const evs=S.events[openKey]||[],ex=S.exams.filter(e=>e.date===openKey);   // exams live in S.exams, not S.events
+  $('dayList').innerHTML=evs.length||ex.length?evs.map((e,i)=>`<li><span class="n mk" style="color:var(${e.k==='deadline'?'--red':'--cyan'})">${e.k==='deadline'?'! ':'› '}${e.time?e.time+'  ':''}${esc(e.t)}</span><button class="btn" data-i="${i}">[remove]</button></li>`).join('')+
+    ex.map(e=>`<li><span class="n mk" style="${colStyle(e.c,'var(--amber)')}">‡ ${e.time?e.time+'  ':''}${esc(e.c)} exam</span><button class="btn" data-exam="${esc(e.c)}">[remove]</button></li>`).join('')
+    :'<li class="empty">nothing planned. add something below.</li>';
 }
 $('dayList').addEventListener('click',e=>{
-  const i=e.target.dataset.i;if(i===undefined)return;
+  const x=e.target.dataset.exam;
+  if(x!==undefined){const j=S.exams.findIndex(v=>v.c===x&&v.date===openKey);if(j>=0)S.exams.splice(j,1);save();renderDayList();renderAll();return}
+  const i=e.target.dataset.i;if(i===undefined||!S.events[openKey])return;
   S.events[openKey].splice(+i,1);if(!S.events[openKey].length)delete S.events[openKey];
   save();renderDayList();renderAll();
 });
@@ -816,14 +876,17 @@ function attPct(k){const r=S.att[k];if(!r)return null;const {got,total}=attNums(
 function attLine(k){const r=attR(k),{got,total}=attNums(r),pc=attPct(k);
   return `${k}: ${got}/${total}${pc===null?'':', '+pc+'%'}${r.l?`, ${r.l} on leave`:''}. ${attAdvice(r)}`}
 function histAdd(k,d,m,at){(S.attHist[k]=S.attHist[k]||[]).push(at?{d,m,at}:{d,m})}
-function histDrop(k,d,m,at){const h=S.attHist[k]||[];for(let i=h.length-1;i>=0;i--)if(h[i].d===d&&h[i].m===m&&(!at||h[i].at===at)){h.splice(i,1);return}}
+/* entries from a class in 3:schedule carry `at`; the dialog's buttons add entries without it, so each only removes its own */
+function histDrop(k,d,m,at){const h=S.attHist[k]||[];for(let i=h.length-1;i>=0;i--)if(h[i].d===d&&h[i].m===m&&(at?h[i].at===at:!h[i].at)){h.splice(i,1);return}}
+function dropMarks(k){for(const key in S.attMarks)if(key.split('|').slice(2).join('|')===k)delete S.attMarks[key]}
 function attCell(i,nm){
   if(!(i.ck in S.colors||i.ck in S.att))return '';
   const pc=attPct(i.ck);
-  let h=pc===null?'':`<span class="att ${pc<S.attMin?'low':''}" title="${i.ck} attendance">${pc}%</span>`;
+  let h=pc===null?'':`<span class="att ${pc<S.attMin?'low':''}" title="${esc(i.ck)} attendance">${pc}%</span>`;
   if(i.s<=nm){   // only classes that have started can be marked
     const key=`${ymd(new Date())}|${i.start}|${i.ck}`,m=S.attMarks[key];
-    h+=`<span class="am" data-key="${key}">`+(m==='p'?`<span class="y" title="attended. click to undo">✓</span>`:m==='a'?`<span class="no" title="missed. click to undo">✗</span>`:
+    h+=`<span class="am" data-key="${esc(key)}">`+(m==='p'?`<span class="y" title="attended. click to undo">✓</span>`:m==='a'?`<span class="no" title="missed. click to undo">✗</span>`:
+      m==='l'?`<span class="lv" title="approved leave. click to undo">L</span>`:
       `<button data-m="p" title="I went">✓</button><button data-m="a" title="I missed it">✗</button>`)+'</span>';
   }
   return h;
@@ -838,8 +901,10 @@ function markAtt(key,m){   // m: 'p', 'a', or null to undo
 /* toggle one dated absence to approved leave, or back */
 function flipLeave(k,i){
   const e=(S.attHist[k]||[])[i];if(!e||e.m==='p')return null;
-  const r=attR(k),to=e.m==='a'?'l':'a';
-  r[e.m]=Math.max(0,r[e.m]-1);r[to]++;e.m=to;save();renderSide();
+  const r=attR(k),to=e.m==='a'?'l':'a',mark=e.at&&`${e.d}|${e.at}|${k}`;
+  r[e.m]=Math.max(0,r[e.m]-1);r[to]++;
+  if(mark&&S.attMarks[mark]===e.m)S.attMarks[mark]=to;   // keep the class's mark in 3:schedule in step
+  e.m=to;save();renderSide();
   return `${dm(fromYmd(e.d))} is now ${to==='l'?'approved leave':'absent'}. `+attLine(k);
 }
 /* how many classes you can still skip, or need to attend in a row, to stay at S.attMin */
@@ -884,7 +949,8 @@ $('attText').addEventListener('click',e=>{
   const k=b.dataset.k,v=b.dataset.v,r=attR(k),today=ymd(new Date());
   if(v==='u'){const last=(attUndo[k]||[]).pop();
     if(last){r[last]=Math.max(0,r[last]-1);histDrop(k,today,last)}
-    else{const h=S.attHist[k]||[],x=h.pop();const m=x?x.m:(r.a?'a':r.l?'l':'p');r[m]=Math.max(0,r[m]-1)}}
+    else{const h=S.attHist[k]||[],x=h.pop();const m=x?x.m:(r.a?'a':r.l?'l':'p');r[m]=Math.max(0,r[m]-1);
+      if(x&&x.at&&S.attMarks[`${x.d}|${x.at}|${k}`]===x.m)delete S.attMarks[`${x.d}|${x.at}|${k}`]}}
   else{r[v]++;(attUndo[k]=attUndo[k]||[]).push(v);histAdd(k,today,v)}
   save();renderAtt();renderSide();say(attLine(k),'ok');
 });
@@ -894,7 +960,7 @@ $('sched').addEventListener('click',e=>{
   const am=e.target.closest('.am');if(!am)return;
   const b=e.target.closest('button');
   if(b)say(markAtt(am.dataset.key,b.dataset.m),'ok');
-  else if(e.target.closest('.y,.no'))say(markAtt(am.dataset.key,null)+' (undone)','ok');
+  else if(e.target.closest('.y,.no,.lv'))say(markAtt(am.dataset.key,null)+' (undone)','ok');
 });
 
 /* phones have no status bar on screen, so the reminder and focus timer also show under the date */
@@ -935,16 +1001,20 @@ function renderSide(){
     const c=[];if(i.s>=0&&i.e<=nm&&!(i.dl&&i.s>nm))c.push('past');if(i===cur)c.push('cur');if(i.dl)c.push('dl');if(i.ex)c.push('ex');
     return `<li class="${c.join(' ')}"><span class="mk0">${i===cur?'▶':i.dl?'!':i.ex?'‡':''}</span><span class="t">${i.label}</span><span class="r3"><span class="nm"><span class="n mk" style="${i.dl?'':colStyle(i.t)}">${esc(i.t)}</span>${i.r?` <span class="rm mk"># ${esc(i.r)}</span>`:''}</span>${i.cls?attCell(i,nm):''}</span></li>`;
   }).join(''):'<li class="empty"># no classes today</li>';
-  const box=$('sched').parentElement,focusLi=$('sched').querySelector('li.cur')||$('sched').querySelector('li:not(.past)');
-  if(focusLi)box.scrollTop=Math.max(0,focusLi.offsetTop-box.offsetTop);
+  scrollSched();
 
   const out=[];
   for(let k=0;k<=14;k++){
     const d=addDays(new Date(),k);
     dayEvents(ymd(d)).filter(e=>e.k==='deadline'||e.k==='exam').forEach(e=>out.push({t:e.t,k,time:e.time}));
   }
-  $('dls').innerHTML=out.length?out.map(o=>`<div><span class="n mk">${esc(o.t)}</span><span class="when">${o.k===0?'today'+(o.time?' '+o.time:''):o.k===1?'tomorrow':o.k+'d'}</span></div>`).join(''):'<span class="empty"># nothing due in 14 days</span>';
+  $('dls').innerHTML=out.length?out.map(o=>`<div class="${o.k===0&&o.time&&mins(o.time)<nm?'past':''}"><span class="n mk">${esc(o.t)}</span><span class="when">${o.k===0?'today'+(o.time?' '+o.time:''):o.k===1?'tomorrow':o.k+'d'}</span></div>`).join(''):'<span class="empty"># nothing due in 14 days</span>';
   updateLate();updateTheme();
+}
+/* keep the current (or next) class in view: lively passes no mouse wheel, so the list can't be scrolled by hand there */
+function scrollSched(){
+  const box=$('sched').parentElement,focusLi=$('sched').querySelector('li.cur')||$('sched').querySelector('li:not(.past)');
+  if(focusLi)box.scrollTop=Math.max(0,focusLi.offsetTop-box.offsetTop);
 }
 
 /* ---------- Bottom strip: progress ---------- */
@@ -1072,7 +1142,10 @@ function renderFocus(){
   }
   $('hm').innerHTML=html;
 }
-let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(renderFocus,200)});
+/* lively creates the wallpaper window minimized, so sizes measured at load are redone once it has its real size
+   (and once the web font has loaded and changed the text widths) */
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{renderFocus();scrollSched()},200)});
+if(document.fonts)document.fonts.ready.then(()=>renderFocus());
 
 /* ---------- Tasks ----------
    task = {t, done, pri:0|1|2, due:'YYYY-MM-DD', every:'day'|'week'|'w0'..'w6'} */
@@ -1150,6 +1223,12 @@ $('taskIn').addEventListener('keydown',e=>{
 });
 $('notes').value=S.notes||'';
 let nt;$('notes').addEventListener('input',e=>{clearTimeout(nt);nt=setTimeout(()=>{S.notes=e.target.value;save()},400)});
+/* typing is saved 400 ms after the last key; save it right away before a sync or when the page goes away */
+function flushNotes(){const v=$('notes').value;clearTimeout(nt);if(v!==S.notes){S.notes=v;save()}}
+/* show synced or imported notes, but never replace the box under the cursor while you are typing in it */
+function setNotesBox(){const n=$('notes');if(document.activeElement!==n&&n.value!==S.notes)n.value=S.notes}
+$('notes').addEventListener('blur',()=>{flushNotes();setNotesBox()});
+window.addEventListener('pagehide',flushNotes);
 
 /* ---------- Daily log ---------- */
 function showLog(){
@@ -1247,10 +1326,11 @@ const HELP=[
 ['help  or  ?','this page.  keys: / command line, v view, p privacy, esc leave'],
 ];
 function showHelp(){
+  const w=Math.max(...HELP.map(([c])=>c.length))+2;   // the longest command still gets a gap before its description
   $('helpText').innerHTML=HELP.map(([c,d])=>{
     if(c.startsWith('#'))return `<u>${esc(c)}</u>`;
     d=d.replace('@COLORS',Object.keys(NAMED).join(' ')).replace('@LINKS',Object.keys(S.links).join(' '));
-    return `<b>${esc(c.padEnd(30))}</b><i>${esc(d)}</i>`;
+    return `<b>${esc(c.padEnd(w))}</b><i>${esc(d)}</i>`;
   }).join('\n');
   $('helpDlg').showModal();
 }
@@ -1322,7 +1402,7 @@ function run(line){
     }
     case 'exam':case 'exams':{
       if(!rest.length){showExams();return say('')}
-      if(rest[0]==='rm'){const k=(rest[1]||'').toLowerCase(),i=S.exams.findIndex(e=>e.c===k);
+      if(rest[0]==='rm'){const k=courseKey(rest[1]||''),i=S.exams.findIndex(e=>e.c===k);
         if(i<0)return say(`no exam for "${k}"`,'err');S.exams.splice(i,1);save();renderAll();return say(`removed the ${k} exam`,'ok')}
       const k=courseKey(rest[0]);let date=null,time='';
       for(let i=1;i<rest.length;i++){
@@ -1356,8 +1436,8 @@ function run(line){
       if(v==='+'||v==='p'||v==='present'||v==='yes'){r.p++;histAdd(k,today,'p')}
       else if(v==='-'||v==='a'||v==='absent'||v==='no'){r.a++;histAdd(k,today,'a')}
       else if(v==='l'||v==='leave'||v==='a/l'){r.l++;histAdd(k,today,'l')}
-      else if(v==='reset'){delete S.att[k];delete S.attHist[k];save();renderSide();return say(`cleared ${k} attendance`,'ok')}
-      else if(m=v.match(/^(\d+)\/(\d+)$/)){if(+m[1]>+m[2])return say('attended can\'t be more than the total','err');r.p=+m[1];r.a=+m[2]-+m[1]-r.l;if(r.a<0){r.l+=r.a;r.a=0}delete S.attHist[k]}
+      else if(v==='reset'){delete S.att[k];delete S.attHist[k];dropMarks(k);save();renderSide();if($('attDlg').open)renderAtt();return say(`cleared ${k} attendance`,'ok')}
+      else if(m=v.match(/^(\d+)\/(\d+)$/)){if(+m[1]>+m[2])return say('attended can\'t be more than the total','err');r.p=+m[1];r.a=+m[2]-+m[1]-r.l;if(r.a<0){r.l+=r.a;r.a=0}delete S.attHist[k];dropMarks(k)}
       else return say('usage: att <course> +  /  -  /  leave  /  18/22','err');
       save();renderSide();if($('attDlg').open)renderAtt();return say(attLine(k),'ok');
     }
@@ -1467,19 +1547,24 @@ $('privBtn').onclick=()=>setPrivate(!S.private);
 /* ---------- Timetable editor ---------- */
 function ttRow(c={d:1,s:'09:00',e:'10:00',t:'',r:''}){
   const opts=[1,2,3,4,5,6,0].map(d=>`<option value="${d}" ${c.d===d?'selected':''}>${DAYS[d].slice(0,3).toLowerCase()}</option>`).join('');
-  return `<tr><td style="width:7ch"><select class="field">${opts}</select></td><td style="width:11ch"><input class="field" type="time" value="${c.s}"></td><td style="width:11ch"><input class="field" type="time" value="${c.e}"></td><td><input class="field" placeholder="course" value="${esc(c.t)}"></td><td><input class="field" placeholder="room" value="${esc(c.r)}"></td><td style="width:4ch"><button class="btn" title="Remove class" onclick="this.closest('tr').remove()">rm</button></td></tr>`;
+  return `<tr><td style="width:7ch"><select class="field">${opts}</select></td><td style="width:11ch"><input class="field" type="time" value="${c.s}"></td><td style="width:11ch"><input class="field" type="time" value="${c.e}"></td><td><input class="field" placeholder="course" value="${esc(c.t||'')}"></td><td><input class="field" placeholder="room" value="${esc(c.r||'')}"></td><td style="width:4ch"><button class="btn" title="Remove class" onclick="this.closest('tr').remove()">rm</button></td></tr>`;
 }
 $('editTT').onclick=()=>{
   const sorted=S.timetable.slice().sort((a,b)=>((a.d+6)%7)-((b.d+6)%7)||a.s.localeCompare(b.s));
-  $('ttBody').innerHTML=sorted.map(ttRow).join('');$('ttDlg').showModal();
+  $('ttBody').innerHTML=sorted.map(ttRow).join('');$('ttMsg').hidden=true;$('ttDlg').showModal();
 };
 $('ttAdd').onclick=()=>{$('ttBody').insertAdjacentHTML('beforeend',ttRow());$('ttBody').lastElementChild.querySelectorAll('input')[2].focus()};
 $('ttCancel').onclick=()=>$('ttDlg').close();
 $('ttSave').onclick=()=>{
-  S.timetable=[...$('ttBody').rows].map(r=>{
+  const rows=[...$('ttBody').rows].map(r=>{
     const f=r.querySelectorAll('select,input');
-    return {d:+f[0].value,s:f[1].value,e:f[2].value,t:f[3].value.trim(),r:f[4].value.trim()};
-  }).filter(c=>c.t&&c.s&&c.e);
+    return {row:r,c:{d:+f[0].value,s:f[1].value,e:f[2].value,t:f[3].value.trim(),r:f[4].value.trim()}};
+  });
+  // a class that ends before it starts would never show as "now" and would have no height in the week view
+  const bad=rows.filter(({c})=>c.t&&c.s&&c.e&&c.e<=c.s);
+  rows.forEach(({row})=>row.classList.toggle('bad',bad.some(b=>b.row===row)));
+  if(bad.length){$('ttMsg').textContent=`${bad.length===1?'the red class ends':'the red classes end'} before ${bad.length===1?'it starts':'they start'}. fix the times, then save.`;$('ttMsg').hidden=false;return}
+  S.timetable=rows.map(({c})=>c).filter(c=>c.t&&c.s&&c.e);
   save();$('ttDlg').close();renderAll();
 };
 
@@ -1488,7 +1573,7 @@ const M=['pt','pr','pb','pl'],MI=['mT','mR','mB','mL'];
 function applyLayout(){M.forEach(k=>document.documentElement.style.setProperty('--'+k,S.layout[k]+'px'))}
 $('setBtn').onclick=()=>{M.forEach((k,i)=>$(MI[i]).value=S.layout[k]);$('setDlg').showModal()};
 $('setCancel').onclick=()=>$('setDlg').close();
-$('setSave').onclick=()=>{M.forEach((k,i)=>S.layout[k]=Math.max(0,+$(MI[i]).value||0));save();applyLayout();$('setDlg').close()};
+$('setSave').onclick=()=>{M.forEach((k,i)=>S.layout[k]=Math.min(MAX_MARGIN,Math.max(0,Math.round(+$(MI[i]).value||0))));save();applyLayout();$('setDlg').close()};
 
 /* ---------- Backup ---------- */
 /* in the android app, files go through the app (to Downloads); elsewhere a normal download */
@@ -1496,8 +1581,7 @@ function saveFile(name,text){
   if(window.AndroidBridge&&AndroidBridge.saveFile){AndroidBridge.saveFile(name,text);return}
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;a.click();
 }
-/* Lively (a WebView2 host, unlike the android app) cancels every download, so export can't make a file there */
-const LIVELY=!!(window.chrome&&chrome.webview)&&!window.AndroidBridge;
+/* Lively cancels every download, so export can't make a file there */
 function doExport(){
   if(LIVELY)return say('lively blocks downloads, so export cannot save a file here. sync keeps a copy (with history) on github','err');
   S.lastBackup=Date.now();save();
@@ -1509,16 +1593,19 @@ function doExport(){
 function updateBackup(){
   const hasData=S.tasks.length+Object.keys(S.events).length+Object.keys(S.log).length+S.countdowns.length>2;
   const age=S.lastBackup?daysBetween(new Date(S.lastBackup),new Date()):null;
-  const synced=!!(S.sync&&S.sync.gist&&!S.sync.err);
-  const due=hasData&&!synced&&(age===null||age>=7);
+  const synced=!!(S.sync&&S.sync.gist&&(!S.sync.err||S.sync.err==='offline'));   // briefly offline still has a synced copy
+  const due=hasData&&!synced&&(LIVELY||age===null||age>=7);
   $('backupBtn').hidden=!due;
-  if(due)$('backupBtn').textContent=age===null?'never backed up':`backup ${age}d ago`;
-  $('backupBtn').classList.toggle('old',due&&age!==null&&age>=14);
+  // lively can't download a backup file, so there the nag asks for sync instead
+  if(due)$('backupBtn').textContent=LIVELY?'not synced':age===null?'never backed up':`backup ${age}d ago`;
+  $('backupBtn').title=LIVELY?'Keep a copy on github with sync':'Download a backup now';
+  $('backupBtn').classList.toggle('old',due&&(LIVELY||age!==null&&age>=14));
 }
-$('exportBtn').onclick=$('backupBtn').onclick=doExport;
+$('exportBtn').onclick=doExport;$('backupBtn').onclick=()=>LIVELY?showSyncDlg():doExport();
 $('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
+  flushNotes();   // a pending notes save would otherwise land on top of the imported notes
   f.text().then(t=>{
     if(/\.ics$/i.test(f.name)||/^\s*BEGIN:VCALENDAR/.test(t))return say(importIcs(t,f.name),'ok');
     let d;try{d=JSON.parse(t);if(!d||typeof d!=='object'||!Object.keys(d).some(k=>k in S))throw 0}catch(err){return say(`${f.name} isn't a planner backup or a calendar (.ics) file`,'err')}
@@ -1526,12 +1613,12 @@ $('importFile').onchange=e=>{
     if(!('tasks' in d)&&!('events' in d)){
       const keys=Object.keys(d).filter(k=>k in S||k==='timetable');
       if(!confirm(`Replace your ${keys.join(', ')} with the one in ${f.name}? Everything else stays as it is.`))return say('import cancelled');
-      keys.forEach(k=>S[k]=d[k]);normalize();save();renderAll();
+      keys.forEach(k=>S[k]=d[k]);normalize();save();setNotesBox();renderAll();
       if($('attDlg').open)renderAtt();
       return say(`replaced ${keys.join(', ')} from ${f.name}${d.timetable?`: ${d.timetable.length} classes a week`:''}${d.att?`: attendance for ${Object.keys(d.att).length} courses`:''}`,'ok');
     }
     if(!confirm('Importing a backup replaces everything in the planner with what is in the file. Continue?'))return say('import cancelled');
-    {const keep={sync:S.sync,layout:S.layout,mtab:S.mtab};S=d;Object.assign(S,keep)}S.fresh=false;normalize();takeSnap();for(const k of syncKeys())S.ft[k]=Date.now();applyLayout();applyTheme();setPrivate(S.private);save();$('notes').value=S.notes||'';renderAll();runFocusTicker();
+    {const keep={sync:S.sync,layout:S.layout,mtab:S.mtab};S=d;Object.assign(S,keep)}S.fresh=false;normalize();takeSnap();for(const k of syncKeys())S.ft[k]=Date.now();applyLayout();applyTheme();setPrivate(S.private);save();setNotesBox();renderAll();runFocusTicker();
     say(`restored backup ${f.name}`,'ok');
   });
   e.target.value='';
@@ -1574,11 +1661,16 @@ function importIcs(text,name){
    Pulls are cheap (ETag), every 2 minutes while open, on wake, and a few seconds after an edit.
    S.sync = {token, gist, etag, at, err}  (this device only, never exported) */
 const GIST_DESC='desk-planner sync',GIST_FILE='desk-planner.json',API='https://api.github.com';
-let syncBusy=false,syncTimer=null;
+let syncBusy=false,syncTimer=null,syncConnecting=false;
+/* a request that never answers (network change, or the wallpaper suspended mid-request) must not block sync forever */
+const timeout=()=>window.AbortSignal&&AbortSignal.timeout?AbortSignal.timeout(20000):undefined;
 function gh(path,opt={}){
   const h={'Accept':'application/vnd.github+json','Authorization':'Bearer '+S.sync.token,...(opt.headers||{})};
-  return fetch(API+path,{...opt,headers:h,cache:'no-store'});
+  return fetch(API+path,{...opt,headers:h,cache:'no-store',signal:timeout()});
 }
+const netErr=e=>['TypeError','TimeoutError','AbortError'].includes(e&&e.name);   // fetch failed or timed out
+/* after synced data lands: dialogs that show (and index into) it are redrawn, so a [remove] can't hit the wrong item */
+function refreshDialogs(){if($('dayDlg').open)renderDayList();if($('examDlg').open)renderExams();if($('attDlg').open)renderAtt()}
 function packState(){const data={};for(const k of syncKeys())data[k]=S[k];return JSON.stringify({v:1,at:Date.now(),ft:S.ft,data})}
 /* newer field wins. returns [changedHere, localHasNewer] */
 function mergeRemote(remote){
@@ -1596,7 +1688,7 @@ async function pullGist(){
   if(!r.ok)throw new Error(`github answered ${r.status}`);
   S.sync.etag=r.headers.get('ETag');
   const g=await r.json(),f=g.files&&g.files[GIST_FILE];if(!f)return null;
-  let text=f.content;if(f.truncated)text=await (await fetch(f.raw_url,{cache:'no-store'})).text();
+  let text=f.content;if(f.truncated)text=await (await fetch(f.raw_url,{cache:'no-store',signal:timeout()})).text();
   return JSON.parse(text);
 }
 async function pushGist(){
@@ -1606,23 +1698,30 @@ async function pushGist(){
 }
 async function syncNow(force){
   if(!S.sync||!S.sync.gist||syncBusy)return;
-  if(!navigator.onLine){S.sync.err='offline';showSync();return}
-  syncBusy=true;
+  const sy=S.sync;   // if sync is switched off meanwhile, the results land on this old object, harmlessly
+  if(!navigator.onLine){sy.err='offline';showSync();return}
+  syncBusy=true;flushNotes();
+  // S.sync.at marks how far local changes have gone out. it is the start of this sync, not the end:
+  // an edit made while the push is on its way is newer than that, so the next sync still sends it
+  const t0=Date.now();
   try{
     const remote=await pullGist();
     let here=false,newer=force;
     if(remote){[here,newer]=mergeRemote(remote);newer=newer||force}
-    else{newer=newer||syncKeys().some(k=>(S.ft[k]||0)>(S.sync.at||0))}
-    if(here){normalize();takeSnap();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){};$('notes').value=S.notes||'';applyTheme();renderAll()}
+    else{newer=newer||syncKeys().some(k=>(S.ft[k]||0)>(sy.at||0))}
+    if(here){normalize();takeSnap();store();setNotesBox();applyTheme();renderAll();refreshDialogs()}
     if(newer)await pushGist();
-    S.sync.at=Date.now();S.sync.err=null;
-  }catch(e){S.sync.err=String(e.message||e)}
-  finally{syncBusy=false;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){};showSync();if($('syncDlg').open)renderSyncDlg()}
+    sy.at=t0;sy.err=null;
+  }catch(e){sy.err=netErr(e)?'offline':String(e.message||e)}
+  finally{syncBusy=false;store();showSync();if($('syncDlg').open)renderSyncDlg()}
 }
 function syncSoon(){if(!S.sync||!S.sync.gist)return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(),4000)}
-/* link this device: find the planner's gist on the account, or make one */
-async function connectSync(token){
+/* link this device: find the planner's gist on the account, or make one.
+   auto (from sync-token.txt): only a copy that was empty when it loaded takes the synced data by itself */
+async function connectSync(token,auto){
   token=token.trim();if(!token)return 'paste a token first';
+  if(syncConnecting)return 'already connecting…';   // two at once could make two gists
+  syncConnecting=true;
   const prev=S.sync;S.sync={token,gist:null,etag:null,at:0,err:null};
   try{
     const me=await gh('/user');if(me.status===401){S.sync=prev;return 'github says that token is not valid'}
@@ -1634,10 +1733,11 @@ async function connectSync(token){
       found=list.find(g=>g.description===GIST_DESC&&g.files[GIST_FILE]);
     }
     if(found){
-      // joining: what is already synced wins over this device, except fields this device has never touched
+      if(auto&&!FRESH_AT_LOAD){S.sync=prev;return 'not joined: this planner has its own data and the synced data would replace it. to join anyway: sync, then [use sync-token.txt]'}
+      // joining: the synced data replaces what is on this device
       S.sync.gist=found.id;
       const remote=await pullGist();
-      if(remote){for(const k of syncKeys())S.ft[k]=0;mergeRemote(remote);normalize();takeSnap();$('notes').value=S.notes||'';applyTheme();renderAll()}
+      if(remote){for(const k of syncKeys())S.ft[k]=0;mergeRemote(remote);normalize();takeSnap();setNotesBox();applyTheme();renderAll();refreshDialogs()}
       S.fresh=false;S.sync.at=Date.now();save();showSync();
       return `linked to your synced planner (last saved ${remote?new Date(remote.at).toLocaleString():'?'})`;
     }
@@ -1648,7 +1748,26 @@ async function connectSync(token){
     const g=await r.json();S.sync.gist=g.id;S.sync.etag=r.headers.get('ETag');
     S.fresh=false;S.sync.at=Date.now();save();showSync();
     return 'sync is on. connect your other device with the same token';
-  }catch(e){S.sync=prev;return 'could not reach github. check the internet connection'}
+  }catch(e){S.sync=prev;return netErr(e)?'could not reach github. check the internet connection':`could not connect: ${e.message||e}`}
+  finally{syncConnecting=false}
+}
+/* Lively: each copy added to it, and every start while its disk cache is off, begins with empty storage, and typing a
+   token into the wallpaper may not work. So a token saved as sync-token.txt next to this file (Lively copies the whole
+   folder) connects sync by itself, and an empty copy takes the synced data back. Delete the file to stop. */
+let fileTok=LIVELY?'look':'',fileTokSaid=false,fileTokValue='';
+async function tokenFromFile(){
+  if(fileTok!=='look'||syncConnecting)return;
+  let t='';
+  for(const f of ['sync-token.txt','sync-token.txt.txt']){   // windows can hide the .txt it adds to a file named sync-token.txt
+    try{const r=await fetch(f,{cache:'no-store'});if(r.ok){const m=/\b(github_pat_\w{20,}|ghp_\w{20,})\b/.exec(await r.text());if(m){t=m[1];break}}}catch(e){}
+  }
+  fileTokValue=t;
+  if(!t||S.sync&&S.sync.token===t){fileTok='';return}
+  if(S.sync&&S.sync.gist){S.sync.token=t;S.sync.err=null;store();fileTok='';return syncNow(true)}   // a new token for the same gist
+  const m=await connectSync(t,true),ok=!!(S.sync&&S.sync.gist);
+  if(ok||!/reach github/.test(m))fileTok='';   // done; only an unreachable github is tried again later
+  if(fileTok===''||!fileTokSaid)say('sync-token.txt: '+m,ok?'ok':'err');
+  fileTokSaid=true;
 }
 function ago(t){const m=Math.round((Date.now()-t)/60000);return m<1?'just now':m<60?`${m}m ago`:m<1440?`${Math.round(m/60)}h ago`:`${Math.round(m/1440)}d ago`}
 function showSync(){
@@ -1662,14 +1781,16 @@ function renderSyncDlg(){
   const on=S.sync&&S.sync.gist;
   $('syncBody').innerHTML=on?
     `<p>synced through a private gist on your github. ${S.sync.err?`<span style="color:var(--red)">${esc(S.sync.err)}</span>`:`last synced ${ago(S.sync.at)}.`}</p>
-     <p class="hint">edits on any device show up on the others within about 2 minutes. if the same thing changes on two devices before they sync, the later change wins.</p>`:
+     <p class="hint">edits on any device show up on the others within about 2 minutes. if the same thing changes on two devices before they sync, the later change wins.</p>
+     ${LIVELY&&fileTokValue?'<p class="hint">connected with sync-token.txt: to stop syncing here for good, delete that file and add the folder to lively again.</p>':''}`:
     `<p>keep the laptop wallpaper and the phone app in step, through a private gist on your github account.</p>
      <p class="hint">1. on github: settings, developer settings, personal access tokens, <b>fine-grained token</b>. give it only <b>gists: read and write</b>.<br>
      2. paste it here and connect. do the same on your other device with the same token.<br>
-     the first device creates the gist; a device that joins later takes the synced data (export first if it has something you want to keep).</p>
+     the first device creates the gist; a device that joins later takes the synced data${LIVELY?'':' (export first if it has something you want to keep)'}.</p>
+     ${LIVELY?`<p class="hint">in lively, if typing into the wallpaper doesn't work: save the token in a text file named <b>sync-token.txt</b> next to desk-planner.html and add that folder to lively again. the planner then connects by itself.${fileTokValue?' <b>sync-token.txt was found</b>: use the button below.':''}</p>`:''}
      <input class="field" id="syncTok" type="password" placeholder="github token (github_pat_…)" autocomplete="off">`;
   $('syncActs').innerHTML=on?'<button class="btn" id="syncOff">[disconnect]</button><button class="btn" id="syncGo">[sync now]</button><button class="btn go" id="syncClose">[close]</button>'
-    :'<button class="btn" id="syncClose">[close]</button><button class="btn go" id="syncConn">[connect]</button>';
+    :'<button class="btn" id="syncClose">[close]</button>'+(fileTokValue?'<button class="btn go" id="syncFile">[use sync-token.txt]</button>':'')+'<button class="btn go" id="syncConn">[connect]</button>';
 }
 function showSyncDlg(){renderSyncDlg();if(!$('syncDlg').open)$('syncDlg').showModal()}
 $('syncBtn').onclick=showSyncDlg;
@@ -1678,9 +1799,10 @@ $('syncDlg').addEventListener('click',async e=>{
   if(id==='syncClose')$('syncDlg').close();
   else if(id==='syncGo'){await syncNow(true);say(S.sync.err?S.sync.err:'synced',S.sync.err?'err':'ok')}
   else if(id==='syncOff'){S.sync=null;save();showSync();renderSyncDlg();say('sync is off on this device. the gist stays on github','ok')}
-  else if(id==='syncConn'){e.target.textContent='[connecting…]';const m=await connectSync($('syncTok').value);say(m,S.sync&&S.sync.gist?'ok':'err');renderSyncDlg()}
+  else if(id==='syncConn'||id==='syncFile'){e.target.textContent='[connecting…]';
+    const m=await connectSync(id==='syncFile'?fileTokValue:$('syncTok').value);say(m,S.sync&&S.sync.gist?'ok':'err');renderSyncDlg()}
 });
-window.addEventListener('online',()=>syncNow());
+window.addEventListener('online',()=>{syncNow();tokenFromFile()});
 
 /* ---------- Battery (Chromium-based wallpaper engines only; hidden elsewhere and on desktops) ---------- */
 if(navigator.getBattery)navigator.getBattery().then(b=>{
@@ -1765,20 +1887,23 @@ applyLayout();applyTheme();setPrivate(S.private);sortTasks();
 /* a timer that ran out while the wallpaper was closed still counts */
 if(S.focusRun&&focusLeft()<=0){const len=S.focusRun.len;logFocus(len,new Date(S.focusRun.start+len*60000),S.focusRun.tag);S.focusRun=null;save()}
 renderAll();runFocusTicker();
-/* empty storage (first run, or a new copy of the file in the wallpaper app): point at import */
-if(S.fresh)say(window.AndroidBridge?'# new here. tap more, then sync, to bring in your laptop planner.':'# starting fresh. used the planner before? export from the old copy and import it here.');
-/* Redraw exactly when each minute changes: accurate clock, almost no CPU */
+/* empty storage (first run, or a new copy of the file in the wallpaper app): say how to bring the data back */
+if(S.fresh)say(window.AndroidBridge?'# new here. tap more, then sync, to bring in your laptop planner.':
+  LIVELY?'# starting fresh: lively begins every new copy empty. sync brings your data back (see sync below).':
+  '# starting fresh. used the planner before? export from the old copy and import it here.');
+/* Redraw exactly when each minute changes: accurate clock, almost no CPU.
+   The next tick is booked first, so an error while drawing can't stop the clock. */
 let tickN=0;
 function tick(){
-  if(++tickN%2===0)syncNow();   // every 2 minutes
+  setTimeout(tick,60000-Date.now()%60000+50);
+  if(++tickN%2===0){syncNow();tokenFromFile()}   // every 2 minutes
   const k=ymd(new Date());
   if(k!==lastDay){lastDay=k;goToday();renderAll()}
   else{renderSide();renderProgress();renderCountdowns();if(S.view==='week')renderWeek()}
-  setTimeout(tick,60000-Date.now()%60000+50);
 }
 setTimeout(tick,60000-Date.now()%60000+50);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){renderAll();syncNow()}});
-showSync();syncNow();
+document.addEventListener('visibilitychange',()=>{if(document.hidden)flushNotes();else{renderAll();syncNow()}});
+showSync();syncNow();tokenFromFile();
 </script>
 </body>
 </html>

@@ -27,9 +27,25 @@ Keep it a single file: the wallpaper apps point at one local `.html` path.
   (`window.open`, or `AndroidBridge.openUrl` in the app).
 - In Lively, keyboard input must be enabled for the command line to work (this hides desktop icons),
   so every feature should also be reachable by clicking where practical.
-- Lively keeps `localStorage` only with its **disk cache** setting on (`CefDiskCache`); otherwise every wallpaper load gets
-  a fresh temp WebView2 profile and the planner starts over. Lively also cancels every download, so `doExport` (detected
-  via `LIVELY`: `chrome.webview` and no `AndroidBridge`) just says so; a working sync counts as a backup in `updateBackup`.
+
+## How Lively runs the page (read from Lively's source, `core-separation` branch)
+
+- Served from `https://<first 8 bytes of sha1(folder path)>.localhost/desk-planner.html` (WebView2 virtual host), so the
+  storage origin is per folder. Adding the file to Lively copies the **whole folder** into
+  `…\Library\SaveData\wptmp\<random>`: every re-add is a new origin with **empty storage**, even with disk cache on.
+  With **disk cache** off (`CefDiskCache`) every load also gets a temporary profile. `LIVELY` = `chrome.webview` and no
+  `AndroidBridge`.
+- Same-origin `fetch` of files next to the page works, which is what `sync-token.txt` uses (`tokenFromFile`): a token
+  there connects sync by itself; a copy that was empty when it loaded (`FRESH_AT_LOAD`) joins and gets its data back,
+  one with its own data doesn't (the sync dialog then offers `[use sync-token.txt]`). The file is in `.gitignore`.
+- Input: only left button down/up and mouse moves are forwarded (posted messages), and only while the desktop is the
+  foreground window. No mouse wheel, no right click, drags don't work (move messages lack MK_LBUTTON). Keys only in
+  Lively's mouse+keyboard mode. So the wallpaper layout has 10px scrollbars (clicking the track pages; not verified in
+  Lively itself) and `scrollSched()` keeps the current class in view.
+- Downloads are cancelled (`doExport` says so; the backup nag asks for sync instead). New windows open in the default
+  browser only when user-initiated. When Lively pauses the wallpaper it freezes the renderer (timers stop, no
+  `visibilitychange`), so the next minute tick catches up and sync requests time out after 20 s. The window starts
+  minimized: widths measured at load are redone on `resize`.
 
 ## Layout
 
@@ -66,7 +82,9 @@ compile-checked locally against an android.jar from github.com/Reginer/aosp-andr
 `S.sync = {token, gist, etag, at, err}` is device-only and never exported. `save()` stamps `S.ft[field]` for every
 synced field whose JSON changed (fields in `LOCAL_KEYS` don't sync: layout, mtab, private, fresh, fortunePick,
 lastBackup, sync, ft, focusRun, view). `syncNow()` pulls (ETag), merges per field (newer `ft` wins), pushes if local
-is newer; runs every 2 min, on wake, on `online`, and 4 s after an edit. `connectSync(token)` finds the gist by
+is newer; runs every 2 min, on wake, on `online`, and 4 s after an edit. `S.sync.at` is the time the last successful
+sync **started** (an edit made during a push is newer, so it still goes out). Pending notes are flushed first, and the
+notes box is never rewritten while it has focus (`setNotesBox`). `connectSync(token, auto)` finds the gist by
 description `desk-planner sync` or creates it; a joining device resets its `ft` so the synced data wins.
 Test with a fake GitHub via Playwright `context.route('https://api.github.com/**', …)`.
 
@@ -122,7 +140,9 @@ Also the default in `sampleData()` and in `timetable.json`.
 }
 ```
 
-`normalize()` fills defaults for older saves; add new fields there.
+`normalize()` fills defaults for older saves and repairs data from saves, backups and the gist before anything renders
+it (times padded to HH:MM, dates checked, colours must be hex, `pri` 0–2, margins 0–300…). It fixes values in place and
+keeps unknown fields; only entries with nothing usable are dropped. Add new fields there.
 Tasks are kept sorted by `sortTasks()` (undone, priority, due) so displayed numbers = array index + 1.
 Import: a backup `.json` **replaces** all data (after a confirm), but a `.json` without `tasks`/`events` (e.g. `{"timetable":[…]}`)
 replaces only the fields it contains (`timetable.json`, `attendance.json` from the college portal); an `.ics` file **merges** its events
