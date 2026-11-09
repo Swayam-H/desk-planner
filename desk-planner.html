@@ -53,6 +53,8 @@ body.private .mk,body.private textarea.notes{filter:blur(5px);transition:filter 
 /* ---------- Panes (tmux style: title sits on the border) ---------- */
 .pane{position:relative;border:1px solid var(--line);padding:18px 16px 12px;min-height:0;min-width:0;display:flex;flex-direction:column}
 .pane>.title{position:absolute;top:-.8em;left:12px;background:var(--bg);padding:0 6px;color:var(--dim)}
+.pane>.pager{position:absolute;top:-.8em;right:12px;background:var(--bg);padding:0 2px}
+.pager button{color:var(--dim);padding:0 4px}.pager button:hover{color:var(--amber)}
 .pane:hover,.pane:focus-within{border-color:var(--amber)}
 .pane:hover>.title,.pane:focus-within>.title{color:var(--amber)}
 
@@ -1016,6 +1018,16 @@ function scrollSched(){
   const box=$('sched').parentElement,focusLi=$('sched').querySelector('li.cur')||$('sched').querySelector('li:not(.past)');
   if(focusLi)box.scrollTop=Math.max(0,focusLi.offsetTop-box.offsetTop);
 }
+/* lively passes no wheel and no drags (a drag arrives as a click, ticking whatever is under it),
+   so in lively a pane whose list overflows gets page up/down buttons on its top border */
+if(LIVELY)document.querySelectorAll('.pane>.scroll').forEach(sc=>{
+  const p=document.createElement('span');p.className='pager';
+  p.innerHTML='<button data-d="-1" title="Scroll up">[▲]</button><button data-d="1" title="Scroll down">[▼]</button>';
+  p.onclick=e=>{const d=+e.target.dataset.d;if(d)sc.scrollTop+=d*Math.max(40,sc.clientHeight*.8)};
+  sc.parentElement.appendChild(p);
+  const upd=()=>{p.hidden=sc.scrollHeight<=sc.clientHeight+1};
+  new ResizeObserver(upd).observe(sc);new MutationObserver(upd).observe(sc,{childList:true,subtree:true});upd();
+});
 
 /* ---------- Bottom strip: progress ---------- */
 const BAR=16;
