@@ -1800,7 +1800,10 @@ $('syncDlg').addEventListener('click',async e=>{
   else if(id==='syncGo'){await syncNow(true);say(S.sync.err?S.sync.err:'synced',S.sync.err?'err':'ok')}
   else if(id==='syncOff'){S.sync=null;save();showSync();renderSyncDlg();say('sync is off on this device. the gist stays on github','ok')}
   else if(id==='syncConn'||id==='syncFile'){e.target.textContent='[connecting…]';
-    const m=await connectSync(id==='syncFile'?fileTokValue:$('syncTok').value);say(m,S.sync&&S.sync.gist?'ok':'err');renderSyncDlg()}
+    const typed=$('syncTok').value,m=await connectSync(id==='syncFile'?fileTokValue:typed),ok=!!(S.sync&&S.sync.gist);
+    say(m,ok?'ok':'err');renderSyncDlg();
+    // the message line is behind the dialog, so a failure is shown in it too, with the token kept for another try
+    if(!ok){$('syncTok').value=typed;$('syncBody').insertAdjacentHTML('beforeend',`<p class="hint" style="color:var(--red)">${esc(m)}</p>`)}}
 });
 window.addEventListener('online',()=>{syncNow();tokenFromFile()});
 
