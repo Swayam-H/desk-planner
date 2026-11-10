@@ -59,6 +59,8 @@ Keep it a single file: the wallpaper apps point at one local `.html` path.
   (downloads go to `~/Downloads`, then `say('saved to …')`); new windows/links go to the default browser.
 - Full input (keys, wheel, right click → inspect). Reloads when `desk-planner.html`'s mtime changes, and after a
   renderer crash. `--replace` stops the running one (pid file). `install.sh`: apt deps, autostart + app-menu entries.
+- Ubuntu's desktop-icons extension (`ding@rastersoft.com`) puts an invisible full-screen window over the planner that
+  takes every click (seen on the user's Ubuntu, 2026-11-10). `install.sh` disables it and `--uninstall` re-enables it.
 - Test headless: `xvfb-run -s "-screen 0 1536x864x24"` with `apt install gir1.2-webkit2-4.1 gir1.2-gtk-3.0 xdotool`,
   run with `python3.12` (the sandbox's default python3 has a broken `gi`), click/type with `xdotool`,
   grab the screen with `Gdk.pixbuf_get_from_window`. Use a throwaway `HOME`.

@@ -8,10 +8,13 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAUNCHER="$DIR/desk-planner-wallpaper.py"
 AUTOSTART="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/desk-planner.desktop"
 APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications/desk-planner.desktop"
+DING="ding@rastersoft.com"   # ubuntu's desktop icons: an invisible full-screen window that sits over the planner and eats its clicks
+DING_MARK="${XDG_DATA_HOME:-$HOME/.local/share}/desk-planner/ding-was-on"
 
 if [[ "${1:-}" == "--uninstall" ]]; then
   pkill -f "$LAUNCHER" || true
   rm -f "$AUTOSTART" "$APPS"
+  if [[ -f "$DING_MARK" ]]; then gnome-extensions enable "$DING" 2>/dev/null || true; rm -f "$DING_MARK"; fi
   echo "removed. your planner data stays in ~/.local/share/desk-planner (delete it to wipe it)."
   exit 0
 fi
@@ -22,6 +25,12 @@ if ! /usr/bin/python3 -c "import gi; gi.require_version('Gtk','3.0'); gi.require
   sudo apt-get install -y python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 fi
 chmod +x "$LAUNCHER"
+
+# the planner covers the desktop icons anyway; turn them off so clicks reach it (uninstall turns them back on)
+if command -v gnome-extensions >/dev/null && gnome-extensions info "$DING" 2>/dev/null | grep -qiE 'state: (enabled|active)'; then
+  gnome-extensions disable "$DING" && mkdir -p "$(dirname "$DING_MARK")" && touch "$DING_MARK"
+  echo "turned off ubuntu's desktop icons, which block clicks on the planner."
+fi
 
 EXEC="/usr/bin/python3 \"$LAUNCHER\"${*:+ $*}"
 mkdir -p "$(dirname "$AUTOSTART")" "$(dirname "$APPS")"

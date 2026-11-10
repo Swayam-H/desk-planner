@@ -29,7 +29,8 @@ bar and the dock, so the `margins` setting can stay at 0. Keyboard, mouse wheel,
 - Data stays in `~/.local/share/desk-planner` across restarts. `git pull` updates it; the page reloads by itself.
 - Restart it from the app menu (**Desk Planner**). Other options: `python3 linux/desk-planner-wallpaper.py --help`
   (`--window` for a normal window, `--monitor 1`, `--desktop` for the desktop layer).
-- Ubuntu's desktop icons end up hidden under the planner, like with Lively's keyboard mode.
+- The installer turns off Ubuntu's desktop icons (the `ding@rastersoft.com` extension): its invisible full-screen
+  window sits over the planner and blocks every click. Uninstalling turns them back on.
 - Remove it: `bash linux/install.sh --uninstall`.
 
 See `CLAUDE.md` for how it's built.
