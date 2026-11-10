@@ -99,6 +99,8 @@ dialog>.pager{position:absolute;top:8px;right:14px}
 .ev .tm{color:var(--dim)}
 /* events ticked off: crossed out and faded wherever they show */
 .ev.x,.wad .x,.blk.x,.sched li.x .n,.dlist li.x .n,.dls .x .n{text-decoration:line-through;opacity:.5}
+#schedStat{color:var(--dim)}
+.sched .mv{color:var(--dim);visibility:hidden;padding:0 0 0 6px}.sched li:hover .mv{visibility:visible}.sched .mv:hover{color:var(--amber)}
 .sched .tk{color:var(--dim);padding:0 4px 0 0}.sched .tk:hover{color:var(--amber)}
 .more{font-size:12px;color:var(--dim)}
 /* busy-hours strip: one character per half hour, 08:00–20:00 */
@@ -421,7 +423,7 @@ select.field option{background:var(--bg)}
       <div class="nn" id="nowNext"></div>
     </section>
     <section class="pane" data-tabs="today" style="--o:12">
-      <span class="title">3:schedule</span>
+      <span class="title">3:schedule<span id="schedStat"></span></span>
       <div class="scroll"><ul class="sched" id="sched"></ul></div>
     </section>
     <section class="pane" data-tabs="today" style="--o:13">
@@ -860,19 +862,27 @@ function openDay(key){
 }
 function renderDayList(){
   const evs=S.events[openKey]||[],ex=S.exams.filter(e=>e.date===openKey);   // exams live in S.exams, not S.events
-  $('dayList').innerHTML=evs.length||ex.length?evs.map((e,i)=>`<li class="${e.done?'x':''}"><span class="n mk" style="color:var(${e.k==='deadline'?'--red':'--cyan'})">${e.k==='deadline'?'! ':'› '}${e.time?e.time+'  ':''}${esc(e.t)}</span><button class="btn" data-done="${i}">[${e.done?'undo':'done'}]</button><button class="btn" data-i="${i}">[remove]</button></li>`).join('')+
+  $('dayList').innerHTML=evs.length||ex.length?evs.map((e,i)=>`<li class="${e.done?'x':''}"><span class="n mk" style="color:var(${e.k==='deadline'?'--red':'--cyan'})">${e.k==='deadline'?'! ':'› '}${e.time?e.time+'  ':''}${esc(e.t)}</span><button class="btn" data-done="${i}">[${e.done?'undo':'done'}]</button>${e.done?'':`<button class="btn" data-mv="${i}" title="Move to the next day">[→]</button>`}<button class="btn" data-i="${i}">[remove]</button></li>`).join('')+
     ex.map(e=>`<li><span class="n mk" style="${colStyle(e.c,'var(--amber)')}">‡ ${e.time?e.time+'  ':''}${esc(e.c)} exam</span><button class="btn" data-exam="${esc(e.c)}">[remove]</button></li>`).join('')
     :'<li class="empty">nothing planned. add something below.</li>';
 }
 $('dayList').addEventListener('click',e=>{
   const x=e.target.dataset.exam;
   if(x!==undefined){const j=S.exams.findIndex(v=>v.c===x&&v.date===openKey);if(j>=0)S.exams.splice(j,1);save();renderDayList();renderAll();return}
+  if(e.target.dataset.mv!==undefined){moveEvent(openKey,+e.target.dataset.mv);return}
   const dn=e.target.dataset.done;
   if(dn!==undefined){const ev=(S.events[openKey]||[])[+dn];if(ev){toggleDone(ev);renderDayList();renderAll()}return}
   const i=e.target.dataset.i;if(i===undefined||!S.events[openKey])return;
   S.events[openKey].splice(+i,1);if(!S.events[openKey].length)delete S.events[openKey];
   save();renderDayList();renderAll();
 });
+function moveEvent(key,i){
+  const L=S.events[key];if(!L||!L[i])return;
+  const ev=L.splice(i,1)[0],to=ymd(addDays(fromYmd(key),1));delete ev.done;
+  if(!L.length)delete S.events[key];
+  (S.events[to]=S.events[to]||[]).push(ev);save();renderAll();if($('dayDlg').open)renderDayList();
+  say(`moved to ${shortDate(fromYmd(to))}: ${ev.t}`,'ok');
+}
 function toggleDone(ev){if(ev.done)delete ev.done;else ev.done=true;save();say(`${ev.done?'done':'not done'}: ${ev.t}`,'ok')}
 function addEvent(){
   const t=$('evTitle').value.trim();if(!t)return;
@@ -986,6 +996,8 @@ $('attText').addEventListener('click',e=>{
 $('attBtn').onclick=showAtt;$('attClose').onclick=()=>$('attDlg').close();
 
 $('sched').addEventListener('click',e=>{
+  const mv=e.target.closest('.mv');
+  if(mv){moveEvent(ymd(new Date()),+mv.dataset.ei);return}
   const tk=e.target.closest('.tk');
   if(tk){const ev=(S.events[ymd(new Date())]||[])[+tk.dataset.ei];if(ev){toggleDone(ev);renderAll();if($('dayDlg').open)renderDayList()}return}
   const am=e.target.closest('.am');if(!am)return;
@@ -1030,9 +1042,10 @@ function renderSide(){
 
   $('sched').innerHTML=items.length?items.map(i=>{
     const c=[];if(i.s>=0&&i.e<=nm&&!(i.dl&&i.s>nm))c.push('past');if(i===cur)c.push('cur');if(i.dl)c.push('dl');if(i.ex)c.push('ex');if(i.x)c.push('x');
-    return `<li class="${c.join(' ')}"><span class="mk0">${i===cur?'▶':i.dl?'!':i.ex?'‡':''}</span><span class="t">${i.label}</span><span class="r3"><span class="nm">${i.ei!==undefined?`<button class="tk" data-ei="${i.ei}" title="${i.x?'Mark not done':'Mark done'}">[${i.x?'x':' '}]</button>`:''}<span class="n mk" style="${i.dl?'':colStyle(i.t)}">${esc(i.t)}</span>${i.r?` <span class="rm mk"># ${esc(i.r)}</span>`:''}</span>${i.cls?attCell(i,nm):''}</span></li>`;
+    return `<li class="${c.join(' ')}"><span class="mk0">${i===cur?'▶':i.dl?'!':i.ex?'‡':''}</span><span class="t">${i.label}</span><span class="r3"><span class="nm">${i.ei!==undefined?`<button class="tk" data-ei="${i.ei}" title="${i.x?'Mark not done':'Mark done'}">[${i.x?'x':' '}]</button>`:''}<span class="n mk" style="${i.dl?'':colStyle(i.t)}">${esc(i.t)}</span>${i.ei!==undefined&&!i.x?`<button class="mv" data-ei="${i.ei}" title="Move to tomorrow">»</button>`:''}${i.r?` <span class="rm mk"># ${esc(i.r)}</span>`:''}</span>${i.cls?attCell(i,nm):''}</span></li>`;
   }).join(''):'<li class="empty"># no classes today</li>';
   scrollSched();
+  $('schedStat').textContent=schedStat();
 
   const out=[];
   for(let k=0;k<=14;k++){
@@ -1041,6 +1054,21 @@ function renderSide(){
   }
   $('dls').innerHTML=out.length?out.map(o=>`<div class="${o.k===0&&o.time&&mins(o.time)<nm?'past':''}${o.x?' x':''}"><span class="n mk">${esc(o.t)}</span><span class="when">${o.k===0?'today'+(o.time?' '+o.time:''):o.k===1?'tomorrow':o.k+'d'}</span></div>`).join(''):'<span class="empty"># nothing due in 14 days</span>';
   updateLate();updateTheme();
+}
+/* "2/5 done · 3d streak": today's events ticked, and how many days in a row every [must] session got done.
+   days without [must] items don't break the streak; today only counts once it is complete */
+function schedStat(){
+  const today=new Date(),todayK=ymd(today),evs=(S.events[todayK]||[]).filter(e=>e.k!=='exam');
+  let streak=0;
+  for(let k=0;k<120;k++){
+    const musts=(S.events[ymd(addDays(today,-k))]||[]).filter(e=>/^\[must\]/i.test(e.t));
+    if(!musts.length)continue;
+    if(musts.every(e=>e.done))streak++;else if(k>0)break;
+  }
+  const parts=[];
+  if(evs.length)parts.push(`${evs.filter(e=>e.done).length}/${evs.length} done`);
+  if(streak)parts.push(`${streak}d streak`);
+  return parts.length?' · '+parts.join(' · '):'';
 }
 /* keep the current (or next) class in view: lively passes no mouse wheel, so the list can't be scrolled by hand there */
 function scrollSched(){
@@ -1642,10 +1670,10 @@ function updateBackup(){
   const hasData=S.tasks.length+Object.keys(S.events).length+Object.keys(S.log).length+S.countdowns.length>2;
   const age=S.lastBackup?daysBetween(new Date(S.lastBackup),new Date()):null;
   const synced=!!(S.sync&&S.sync.gist&&(!S.sync.err||S.sync.err==='offline'));   // briefly offline still has a synced copy
-  const due=hasData&&!synced&&(LIVELY||age===null||age>=7);
+  const due=LIVELY?!synced:hasData&&!synced&&(age===null||age>=7);
   $('backupBtn').hidden=!due;
   // lively can't download a backup file, so there the nag asks for sync instead
-  if(due)$('backupBtn').textContent=LIVELY?'not synced':age===null?'never backed up':`backup ${age}d ago`;
+  if(due)$('backupBtn').textContent=LIVELY?(hasData?'not synced':'sync off: connect to load your data'):age===null?'never backed up':`backup ${age}d ago`;
   $('backupBtn').title=LIVELY?'Keep a copy on github with sync':'Download a backup now';
   $('backupBtn').classList.toggle('old',due&&(LIVELY||age!==null&&age>=14));
 }
