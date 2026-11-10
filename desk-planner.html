@@ -54,6 +54,8 @@ body.private .mk,body.private textarea.notes{filter:blur(5px);transition:filter 
 .pane{position:relative;border:1px solid var(--line);padding:18px 16px 12px;min-height:0;min-width:0;display:flex;flex-direction:column}
 .pane>.title{position:absolute;top:-.8em;left:12px;background:var(--bg);padding:0 6px;color:var(--dim)}
 .pane>.pager{position:absolute;top:-.8em;right:12px;background:var(--bg);padding:0 2px}
+dialog>.pager{position:absolute;top:8px;right:14px}
+.pager.inl{display:block;text-align:right;line-height:1.2}
 .pager button{color:var(--dim);padding:0 4px}.pager button:hover{color:var(--amber)}
 .pane:hover,.pane:focus-within{border-color:var(--amber)}
 .pane:hover>.title,.pane:focus-within>.title{color:var(--amber)}
@@ -95,6 +97,9 @@ body.private .mk,body.private textarea.notes{filter:blur(5px);transition:filter 
 .ev.dl{color:var(--red)}
 .ev.ex{font-weight:700}
 .ev .tm{color:var(--dim)}
+/* events ticked off: crossed out and faded wherever they show */
+.ev.x,.wad .x,.blk.x,.sched li.x .n,.dlist li.x .n,.dls .x .n{text-decoration:line-through;opacity:.5}
+.sched .tk{color:var(--dim);padding:0 4px 0 0}.sched .tk:hover{color:var(--amber)}
 .more{font-size:12px;color:var(--dim)}
 /* busy-hours strip: one character per half hour, 08:00–20:00 */
 .busy{margin-top:auto;font-size:10px;line-height:1;white-space:nowrap;overflow:hidden;color:var(--line);letter-spacing:-.5px}
@@ -649,7 +654,7 @@ function fixDays(o,fix){const out={};for(const k in obj(o)){const key=fixYmd(k),
 function normalize(){
   S.timetable=arr(S.timetable).filter(c=>{if(!isRec(c))return false;const s=fixHm(c.s),e=fixHm(c.e),d=+c.d;
     if(!s||!e||!Number.isInteger(d)||d<0||d>6||!txt(c.t).trim())return false;c.s=s;c.e=e;c.d=d;c.t=txt(c.t);return true});
-  S.events=fixDays(S.events,e=>{e.t=txt(e.t);if(e.time)e.time=fixHm(e.time)||''});
+  S.events=fixDays(S.events,e=>{e.t=txt(e.t);if(e.time)e.time=fixHm(e.time)||'';if(e.done!=null)e.done=!!e.done});
   S.log=fixDays(S.log,x=>{x.t=txt(x.t);x.at=fixHm(x.at)||''});
   S.tasks=arr(S.tasks).filter(t=>isRec(t)&&txt(t.t).trim());
   S.tasks.forEach(t=>{t.t=txt(t.t);if(t.pri!=null){const p=Math.round(+t.pri);t.pri=p>=2?2:p>=1?1:0}
@@ -744,9 +749,10 @@ function busyStrip(d){
 }
 function evLine(e){
   const st=colStyle(e.t);
+  const x=e.done?' x':'';
   if(e.k==='exam')return `<div class="ev ex" style="${st||'color:var(--amber)'}">‡ ${e.time?`<span class="tm">${e.time}</span> `:''}<span class="mk">${esc(e.t)}</span></div>`;
-  if(e.k==='deadline')return `<div class="ev dl"><span class="bang">! </span>${e.time?`<span class="tm">${e.time}</span> `:''}<span class="mk" style="${st}">${esc(e.t)}</span></div>`;
-  return `<div class="ev" style="${st}">› ${e.time?`<span class="tm">${e.time}</span> `:''}<span class="mk">${esc(e.t)}</span></div>`;
+  if(e.k==='deadline')return `<div class="ev dl${x}"><span class="bang">! </span>${e.time?`<span class="tm">${e.time}</span> `:''}<span class="mk" style="${st}">${esc(e.t)}</span></div>`;
+  return `<div class="ev${x}" style="${st}">› ${e.time?`<span class="tm">${e.time}</span> `:''}<span class="mk">${esc(e.t)}</span></div>`;
 }
 function renderMonth(){
   const y=view.getFullYear(),m=view.getMonth();
@@ -781,7 +787,7 @@ function renderWeek(){
     const allday=[];
     dayEvents(ymd(d)).forEach(e=>{
       if(!e.time)allday.push(e);
-      else{const s=mins(e.time);timed.push({s,e:e.k==='deadline'?s:Math.min(s+(e.k==='exam'?EXAM_LEN:60),1440),t:e.t,kind:e.k==='deadline'?'dl':e.k==='exam'?'exam':'event',time:e.time})}
+      else{const s=mins(e.time);timed.push({s,e:e.k==='deadline'?s:Math.min(s+(e.k==='exam'?EXAM_LEN:60),1440),t:e.t,kind:e.k==='deadline'?'dl':e.k==='exam'?'exam':'event',time:e.time,x:!!e.done})}
     });
     return {timed,allday};
   });
@@ -796,7 +802,7 @@ function renderWeek(){
   html+='<div class="wcorner"></div>';
   per.forEach((p,i)=>{
     html+=`<div class="wad" data-date="${ymd(days[i])}">`+p.allday.map(e=>
-      `<div style="${e.k==='deadline'?'color:var(--red)':colStyle(e.t,'var(--cyan)')}${e.k==='exam'?';font-weight:700':''}">${e.k==='deadline'?'! ':e.k==='exam'?'‡ ':'› '}<span class="mk">${esc(e.t)}</span></div>`).join('')+'</div>';
+      `<div class="${e.done?'x':''}" style="${e.k==='deadline'?'color:var(--red)':colStyle(e.t,'var(--cyan)')}${e.k==='exam'?';font-weight:700':''}">${e.k==='deadline'?'! ':e.k==='exam'?'‡ ':'› '}<span class="mk">${esc(e.t)}</span></div>`).join('')+'</div>';
   });
   html+='<div class="wg">';
   for(let h=Math.ceil(lo/60);h<=Math.floor(hi/60);h++)if(h*60>lo&&h*60<hi)html+=`<span style="top:${pct(h*60)}">${pad(h)}</span>`;
@@ -810,10 +816,10 @@ function renderWeek(){
       const past=isPast||(isToday&&it.e<=nm&&it.kind!=='dl');
       if(it.kind==='dl'){
         const at=Math.min(Math.max(it.s,lo+30),hi),n=dlAt[at]=(dlAt[at]||0)+1;
-        html+=`<div class="blk dlk" style="top:${pct(at)};transform:translateY(calc(-100% - ${(n-1)*19}px))">! ${it.time} <span class="mk">${esc(it.t)}</span></div>`;
+        html+=`<div class="blk dlk${it.x?' x':''}" style="top:${pct(at)};transform:translateY(calc(-100% - ${(n-1)*19}px))">! ${it.time} <span class="mk">${esc(it.t)}</span></div>`;
       }else{
         const st=colStyle(it.t,it.kind==='class'?CLASS_DEF:'var(--cyan)');
-        html+=`<div class="blk ${past?'past':''}" style="top:${pct(it.s)};height:${pct(lo+(it.e-it.s))};${st}${it.kind==='exam'?';font-weight:700':''}" title="${hhmm(it.s)}-${hhmm(it.e)} ${esc(it.t)}">`+
+        html+=`<div class="blk ${past?'past':''}${it.x?' x':''}" style="top:${pct(it.s)};height:${pct(lo+(it.e-it.s))};${st}${it.kind==='exam'?';font-weight:700':''}" title="${hhmm(it.s)}-${hhmm(it.e)} ${esc(it.t)}">`+
           `<span class="mk">${esc(it.t)}</span><span class="tm">${hhmm(it.s)}-${hhmm(it.e)}${it.r?' '+esc(it.r):''}</span></div>`;
       }
     });
@@ -854,17 +860,20 @@ function openDay(key){
 }
 function renderDayList(){
   const evs=S.events[openKey]||[],ex=S.exams.filter(e=>e.date===openKey);   // exams live in S.exams, not S.events
-  $('dayList').innerHTML=evs.length||ex.length?evs.map((e,i)=>`<li><span class="n mk" style="color:var(${e.k==='deadline'?'--red':'--cyan'})">${e.k==='deadline'?'! ':'› '}${e.time?e.time+'  ':''}${esc(e.t)}</span><button class="btn" data-i="${i}">[remove]</button></li>`).join('')+
+  $('dayList').innerHTML=evs.length||ex.length?evs.map((e,i)=>`<li class="${e.done?'x':''}"><span class="n mk" style="color:var(${e.k==='deadline'?'--red':'--cyan'})">${e.k==='deadline'?'! ':'› '}${e.time?e.time+'  ':''}${esc(e.t)}</span><button class="btn" data-done="${i}">[${e.done?'undo':'done'}]</button><button class="btn" data-i="${i}">[remove]</button></li>`).join('')+
     ex.map(e=>`<li><span class="n mk" style="${colStyle(e.c,'var(--amber)')}">‡ ${e.time?e.time+'  ':''}${esc(e.c)} exam</span><button class="btn" data-exam="${esc(e.c)}">[remove]</button></li>`).join('')
     :'<li class="empty">nothing planned. add something below.</li>';
 }
 $('dayList').addEventListener('click',e=>{
   const x=e.target.dataset.exam;
   if(x!==undefined){const j=S.exams.findIndex(v=>v.c===x&&v.date===openKey);if(j>=0)S.exams.splice(j,1);save();renderDayList();renderAll();return}
+  const dn=e.target.dataset.done;
+  if(dn!==undefined){const ev=(S.events[openKey]||[])[+dn];if(ev){toggleDone(ev);renderDayList();renderAll()}return}
   const i=e.target.dataset.i;if(i===undefined||!S.events[openKey])return;
   S.events[openKey].splice(+i,1);if(!S.events[openKey].length)delete S.events[openKey];
   save();renderDayList();renderAll();
 });
+function toggleDone(ev){if(ev.done)delete ev.done;else ev.done=true;save();say(`${ev.done?'done':'not done'}: ${ev.t}`,'ok')}
 function addEvent(){
   const t=$('evTitle').value.trim();if(!t)return;
   (S.events[openKey]=S.events[openKey]||[]).push({t,time:$('evTime').value,k:$('evKind').value});
@@ -878,10 +887,10 @@ $('dayClose').onclick=()=>$('dayDlg').close();
 function todayItems(){
   const now=new Date(),key=ymd(now);
   const items=S.timetable.filter(c=>c.d===now.getDay()).map(c=>({s:mins(c.s),e:mins(c.e),t:c.t,r:c.r,start:c.s,label:`${c.s}-${c.e}`,cls:true,ck:courseKey(c.t)}));
-  dayEvents(key).forEach(e=>{
-    const ex=e.k==='exam';
-    if(e.time){const s=mins(e.time);items.push({s,e:e.k==='deadline'?s:s+(ex?EXAM_LEN:60),t:e.t,r:'',start:e.time,label:e.time,dl:e.k==='deadline',ex})}
-    else items.push({s:-1,e:-1,t:e.t,r:'',label:'all day',dl:e.k==='deadline',ex});
+  dayEvents(key).forEach((e,i)=>{
+    const ex=e.k==='exam',o={t:e.t,r:'',dl:e.k==='deadline',ex,ei:ex?undefined:i,x:!!e.done};
+    if(e.time){const s=mins(e.time);items.push({...o,s,e:o.dl?s:s+(ex?EXAM_LEN:60),start:e.time,label:e.time})}
+    else items.push({...o,s:-1,e:-1,label:'all day'});
   });
   return items.sort((a,b)=>a.s-b.s);
 }
@@ -977,6 +986,8 @@ $('attText').addEventListener('click',e=>{
 $('attBtn').onclick=showAtt;$('attClose').onclick=()=>$('attDlg').close();
 
 $('sched').addEventListener('click',e=>{
+  const tk=e.target.closest('.tk');
+  if(tk){const ev=(S.events[ymd(new Date())]||[])[+tk.dataset.ei];if(ev){toggleDone(ev);renderAll();if($('dayDlg').open)renderDayList()}return}
   const am=e.target.closest('.am');if(!am)return;
   const b=e.target.closest('button');
   if(b)say(markAtt(am.dataset.key,b.dataset.m),'ok');
@@ -1018,17 +1029,17 @@ function renderSide(){
   $('barNow').innerHTML=cur?`now <b class="mk">${esc(cur.t)}</b>, ${dur(cur.e-nm)} left`:nxt&&!soon?`next <b class="mk">${esc(nxt.t)}</b> in ${dur(nxt.s-nm)}`:'';
 
   $('sched').innerHTML=items.length?items.map(i=>{
-    const c=[];if(i.s>=0&&i.e<=nm&&!(i.dl&&i.s>nm))c.push('past');if(i===cur)c.push('cur');if(i.dl)c.push('dl');if(i.ex)c.push('ex');
-    return `<li class="${c.join(' ')}"><span class="mk0">${i===cur?'▶':i.dl?'!':i.ex?'‡':''}</span><span class="t">${i.label}</span><span class="r3"><span class="nm"><span class="n mk" style="${i.dl?'':colStyle(i.t)}">${esc(i.t)}</span>${i.r?` <span class="rm mk"># ${esc(i.r)}</span>`:''}</span>${i.cls?attCell(i,nm):''}</span></li>`;
+    const c=[];if(i.s>=0&&i.e<=nm&&!(i.dl&&i.s>nm))c.push('past');if(i===cur)c.push('cur');if(i.dl)c.push('dl');if(i.ex)c.push('ex');if(i.x)c.push('x');
+    return `<li class="${c.join(' ')}"><span class="mk0">${i===cur?'▶':i.dl?'!':i.ex?'‡':''}</span><span class="t">${i.label}</span><span class="r3"><span class="nm">${i.ei!==undefined?`<button class="tk" data-ei="${i.ei}" title="${i.x?'Mark not done':'Mark done'}">[${i.x?'x':' '}]</button>`:''}<span class="n mk" style="${i.dl?'':colStyle(i.t)}">${esc(i.t)}</span>${i.r?` <span class="rm mk"># ${esc(i.r)}</span>`:''}</span>${i.cls?attCell(i,nm):''}</span></li>`;
   }).join(''):'<li class="empty"># no classes today</li>';
   scrollSched();
 
   const out=[];
   for(let k=0;k<=14;k++){
     const d=addDays(new Date(),k);
-    dayEvents(ymd(d)).filter(e=>e.k==='deadline'||e.k==='exam').forEach(e=>out.push({t:e.t,k,time:e.time}));
+    dayEvents(ymd(d)).filter(e=>e.k==='deadline'||e.k==='exam').forEach(e=>out.push({t:e.t,k,time:e.time,x:!!e.done}));
   }
-  $('dls').innerHTML=out.length?out.map(o=>`<div class="${o.k===0&&o.time&&mins(o.time)<nm?'past':''}"><span class="n mk">${esc(o.t)}</span><span class="when">${o.k===0?'today'+(o.time?' '+o.time:''):o.k===1?'tomorrow':o.k+'d'}</span></div>`).join(''):'<span class="empty"># nothing due in 14 days</span>';
+  $('dls').innerHTML=out.length?out.map(o=>`<div class="${o.k===0&&o.time&&mins(o.time)<nm?'past':''}${o.x?' x':''}"><span class="n mk">${esc(o.t)}</span><span class="when">${o.k===0?'today'+(o.time?' '+o.time:''):o.k===1?'tomorrow':o.k+'d'}</span></div>`).join(''):'<span class="empty"># nothing due in 14 days</span>';
   updateLate();updateTheme();
 }
 /* keep the current (or next) class in view: lively passes no mouse wheel, so the list can't be scrolled by hand there */
@@ -1036,16 +1047,22 @@ function scrollSched(){
   const box=$('sched').parentElement,focusLi=$('sched').querySelector('li.cur')||$('sched').querySelector('li:not(.past)');
   if(focusLi)box.scrollTop=Math.max(0,focusLi.offsetTop-box.offsetTop);
 }
-/* lively passes no wheel and no drags (a drag arrives as a click, ticking whatever is under it),
-   so in lively a pane whose list overflows gets page up/down buttons on its top border */
-if(LIVELY)document.querySelectorAll('.pane>.scroll').forEach(sc=>{
+/* lively passes no wheel and no drags (a drag arrives as a click, ticking whatever is under it), so in lively every
+   area that can scroll gets page up/down buttons: on its pane's or dialog's top border, or just above it when that
+   spot is taken. they only show while the area actually overflows */
+const SCROLLERS='.pane>.scroll,.cds,.dls,textarea.notes,.dlist,.ttwrap,.help,.logv,#attText,.exv';
+function addPager(sc){
   const p=document.createElement('span');p.className='pager';
   p.innerHTML='<button data-d="-1" title="Scroll up">[▲]</button><button data-d="1" title="Scroll down">[▼]</button>';
   p.onclick=e=>{const d=+e.target.dataset.d;if(d)sc.scrollTop+=d*Math.max(40,sc.clientHeight*.8)};
-  sc.parentElement.appendChild(p);
+  const host=sc.closest('dialog')||sc.closest('.pane');
+  if(host&&![...host.children].some(c=>c.classList.contains('pager')))host.appendChild(p);
+  else{p.classList.add('inl');sc.before(p)}
   const upd=()=>{p.hidden=sc.scrollHeight<=sc.clientHeight+1};
-  new ResizeObserver(upd).observe(sc);new MutationObserver(upd).observe(sc,{childList:true,subtree:true});upd();
-});
+  new ResizeObserver(upd).observe(sc);new MutationObserver(upd).observe(sc,{childList:true,subtree:true,characterData:true});
+  sc.addEventListener('input',upd);upd();
+}
+if(LIVELY)document.querySelectorAll(SCROLLERS).forEach(addPager);
 
 /* ---------- Bottom strip: progress ---------- */
 const BAR=16;
@@ -1880,8 +1897,8 @@ function updateTheme(){
   }else c=THEMES[S.theme].acc.slice();
   let mood=isLate()?'late night':h<5||h>=22?'night':h<10?'morning':h<17?'day':'evening';
   const tom=addDays(now,1),todayK=ymd(now);
-  const dueToday=(S.events[todayK]||[]).filter(e=>e.k==='deadline'&&(!e.time||mins(e.time)>=nm)).length;
-  const dueTom=(S.events[ymd(tom)]||[]).filter(e=>e.k==='deadline').length;
+  const dueToday=(S.events[todayK]||[]).filter(e=>e.k==='deadline'&&!e.done&&(!e.time||mins(e.time)>=nm)).length;
+  const dueTom=(S.events[ymd(tom)]||[]).filter(e=>e.k==='deadline'&&!e.done).length;
   const tasksDue=S.tasks.filter(t=>!t.done&&t.due&&t.due<=todayK).length;
   const examSoon=S.exams.filter(e=>e.date===todayK||e.date===ymd(tom)).length;
   const urgency=dueToday+dueTom*.5+tasksDue*.5+examSoon;
