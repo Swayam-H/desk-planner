@@ -70,7 +70,7 @@ body.private .mk,body.private textarea.notes{filter:blur(5px);transition:filter 
 @keyframes blink{50%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.cursor{animation:none}}
 .out{color:var(--dim);min-height:1.5em;margin:2px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.out.ok{color:var(--green)}.out.err{color:var(--red)}
+.out.ok{color:var(--green)}.out.err{color:var(--red)}.out.wrap{white-space:normal}
 .nav{margin-left:auto;display:flex;gap:4px;flex-shrink:0}
 .nav button,.bar button,.btn{color:var(--dim);padding:0 4px}
 .nav button:hover,.bar button:hover,.btn:hover{color:var(--amber)}
@@ -574,6 +574,24 @@ THEMES.auto=THEMES.amber;
 const NAMED={sky:'#7fb8e8',blue:'#6f9be8',teal:'#5fb3b3',cyan:'#7fc8c4',mint:'#7fd1b0',green:'#a3c46b',lime:'#b5d16a',
   yellow:'#e0c35a',sand:'#d9c08f',amber:'#d6a24e',orange:'#e8955a',peach:'#f0a07a',red:'#e5674e',rose:'#e88aa8',
   pink:'#e88ac8',lilac:'#b9a0e8',purple:'#a68ae8'};
+
+/* Hidden motivation lines: only shown by typing hype (or motivate); deliberately left out of help */
+const HYPE=[
+'the reels will still be there after this block. the exam date will not move.',
+'25 minutes. just start the first page.','you do not need motivation. you need the first 5 minutes.',
+'done is better than perfect. submit it.','phone in the other room. future you says thanks.',
+'one block at a time. one exam at a time.','the hard part is opening the pdf. you are already here.',
+'small steps, every day.','you have done hard weeks before. this is another one.',
+'nobody remembers the reels. you will remember the grade.','tired is fine. stopping is optional.',
+'discipline is choosing what you want most over what you want now.',
+'study like the exam is tomorrow. rest like it is next week.','progress, not perfection.',
+'every [must] ticked is a vote for the person you want to be.','start ugly. fix it later.',
+'it always seems impossible until it is done. - nelson mandela',
+'we are what we repeatedly do. - will durant, on aristotle',
+'the secret of getting ahead is getting started. - often credited to mark twain',
+'an hour now saves three on the night before.','close the tab. open the notes.',
+'28 nov is coming either way. walk in ready.','you are allowed to rest. you are not allowed to quit.',
+'quiz yourself. if it hurts, it is working.','one more block, then games. deal?'];
 
 /* Fortune lines (add your own with: fortune add ...) */
 const FORTUNES=[
@@ -1494,6 +1512,7 @@ function run(line){
       const now=new Date();(S.log[k]=S.log[k]||[]).push({t:arg,at:`${pad(now.getHours())}:${pad(now.getMinutes())}`});save();
       return say(`logged. ${S.log[k].length} entr${S.log[k].length===1?'y':'ies'} today`,'ok');
     }
+    case 'hype':case 'motivate':return say('» '+HYPE[Math.floor(Math.random()*HYPE.length)],'ok wrap');
     case 'fortune':{
       if(rest[0]==='add'){if(rest.length<2)return say('usage: fortune add <text>','err');S.fortunes.push(rest.slice(1).join(' '));
         S.fortunePick={day:ymd(new Date()),i:FORTUNES.length+S.fortunes.length-1};save();renderSide();return say('added your line','ok')}
