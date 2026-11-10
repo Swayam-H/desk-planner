@@ -2,7 +2,7 @@
 
 An interactive desktop wallpaper for a university student: a terminal/tmux-styled planner
 (monthly/weekly calendar, today panel, to-dos, focus timer) that runs as a live web wallpaper
-in **Lively Wallpaper** (Windows) or **Plash** (macOS).
+in **Lively Wallpaper** (Windows), **Plash** (macOS) or `linux/desk-planner-wallpaper.py` (Ubuntu/GNOME).
 
 ## Files
 
@@ -46,6 +46,22 @@ Keep it a single file: the wallpaper apps point at one local `.html` path.
   browser only when user-initiated. When Lively pauses the wallpaper it freezes the renderer (timers stop, no
   `visibilitychange`), so the next minute tick catches up and sync requests time out after 20 s. The window starts
   minimized: widths measured at load are redone on `resize`.
+
+## How the Ubuntu launcher runs the page (`linux/`)
+
+- `desk-planner-wallpaper.py`: Python + GTK3 + WebKitGTK (`WebKit2` 4.1). Serves only the planner's files
+  (`desk-planner.html`, `sync-token.txt`, `timetable.json`) from `http://127.0.0.1:47811` (checks the `Host` header),
+  so the storage origin is fixed: data persists in `~/.local/share/desk-planner` (unlike Lively, re-running never empties it).
+- Borderless window, kept below all windows (`--desktop`: desktop type hint), sticky, sized to the monitor's **work
+  area** (no top bar/dock overlap; a monitor-sized undecorated window would be treated as fullscreen). On Wayland it
+  sets `GDK_BACKEND=x11`, since only X11 clients can place themselves under other windows in GNOME.
+- Injects `window.deskPlannerLinux=true` → `LINUX` in the page: `sync-token.txt` is read like in Lively; export works
+  (downloads go to `~/Downloads`, then `say('saved to …')`); new windows/links go to the default browser.
+- Full input (keys, wheel, right click → inspect). Reloads when `desk-planner.html`'s mtime changes, and after a
+  renderer crash. `--replace` stops the running one (pid file). `install.sh`: apt deps, autostart + app-menu entries.
+- Test headless: `xvfb-run -s "-screen 0 1536x864x24"` with `apt install gir1.2-webkit2-4.1 gir1.2-gtk-3.0 xdotool`,
+  run with `python3.12` (the sandbox's default python3 has a broken `gi`), click/type with `xdotool`,
+  grab the screen with `Gdk.pixbuf_get_from_window`. Use a throwaway `HOME`.
 
 ## Layout
 
