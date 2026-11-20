@@ -1,0 +1,219 @@
+{
+ "exams": [
+  {
+   "c": "dna",
+   "date": "2026-11-23",
+   "time": "15:00",
+   "topics": [
+    {
+     "t": "A1 Excel queries",
+     "done": false
+    },
+    {
+     "t": "ER and EER (ch 3, 4)",
+     "done": false
+    },
+    {
+     "t": "ER-to-relational mapping (ch 5, 9)",
+     "done": false
+    },
+    {
+     "t": "Normalisation: FDs, closure, keys, 2NF/3NF/BCNF (ch 14, 15)",
+     "done": false
+    },
+    {
+     "t": "Relational algebra 8.1–8.5",
+     "done": false
+    },
+    {
+     "t": "Tuple relational calculus 8.6",
+     "done": false
+    },
+    {
+     "t": "SQL 6.1–6.4, 7.1, 7.3, 7.4, 10.1, 10.2",
+     "done": false
+    },
+    {
+     "t": "Timed mock",
+     "done": false
+    },
+    {
+     "t": "Two handwritten A4 pages",
+     "done": false
+    }
+   ]
+  },
+  {
+   "c": "osn",
+   "date": "2026-11-24",
+   "time": "09:00",
+   "topics": [
+    {
+     "t": "L01–L04 OS intro, processes, process API, LDE",
+     "done": false
+    },
+    {
+     "t": "L05–L07 scheduling, MLFQ, CFS, multiprocessor",
+     "done": false
+    },
+    {
+     "t": "L08–L09 networks, transport layer",
+     "done": false
+    },
+    {
+     "t": "L10–L13 memory: segmentation, paging, TLB, swapping",
+     "done": false
+    },
+    {
+     "t": "L14–L17 concurrency: threads, locks, CVs, semaphores",
+     "done": false
+    },
+    {
+     "t": "L18–L19 files, directories, FS implementation",
+     "done": false
+    },
+    {
+     "t": "Problems: scheduling, paging, transport",
+     "done": false
+    }
+   ]
+  },
+  {
+   "c": "aad",
+   "date": "2026-11-26",
+   "time": "09:00",
+   "topics": [
+    {
+     "t": "Lec 1–5 numbers, D&C, lower bounds, FFT, BFS, shortest paths, MST",
+     "done": false
+    },
+    {
+     "t": "Lec 10 Huffman",
+     "done": false
+    },
+    {
+     "t": "Lec 6–9 stable matching, Hall's theorem, max matchings",
+     "done": false
+    },
+    {
+     "t": "Lec 11–13 dynamic programming",
+     "done": false
+    },
+    {
+     "t": "Lec 14–18 max flow, min cut",
+     "done": false
+    },
+    {
+     "t": "Lec 19–22 randomized MaxCut, hashing, reductions, NP",
+     "done": false
+    },
+    {
+     "t": "Timed practice: midsem, quizzes, practice set",
+     "done": false
+    }
+   ]
+  },
+  {
+   "c": "prob",
+   "date": "2026-11-27",
+   "time": "09:00",
+   "topics": [
+    {
+     "t": "Probability spaces, conditioning, independence",
+     "done": false
+    },
+    {
+     "t": "Random variables and distributions",
+     "done": false
+    },
+    {
+     "t": "Functions of RVs, joint distributions",
+     "done": false
+    },
+    {
+     "t": "Conditioning, sums, MGFs",
+     "done": false
+    },
+    {
+     "t": "Sampling and convergence",
+     "done": false
+    },
+    {
+     "t": "Random vectors, multivariate Gaussian",
+     "done": false
+    },
+    {
+     "t": "L21–L24 estimators, MLE, Bayesian, MAP",
+     "done": false
+    },
+    {
+     "t": "Linear regression",
+     "done": false
+    },
+    {
+     "t": "Timed past paper",
+     "done": false
+    }
+   ]
+  },
+  {
+   "c": "science",
+   "date": "2026-11-28",
+   "time": "15:00",
+   "topics": [
+    {
+     "t": "QM 1 Beiser ch 2",
+     "done": false
+    },
+    {
+     "t": "QM 2 Beiser ch 3",
+     "done": false
+    },
+    {
+     "t": "QM 3 Beiser ch 4",
+     "done": false
+    },
+    {
+     "t": "QM 4 Beiser ch 5",
+     "done": false
+    },
+    {
+     "t": "QM 5 Beiser 6.1–6.9",
+     "done": false
+    },
+    {
+     "t": "Intro, scales, nonlinear dynamics",
+     "done": false
+    },
+    {
+     "t": "Newtonian mechanics, one particle and many",
+     "done": false
+    },
+    {
+     "t": "Calculus of variations, Lagrangian",
+     "done": false
+    },
+    {
+     "t": "Hamiltonian, phase space, two-body",
+     "done": false
+    },
+    {
+     "t": "Special relativity",
+     "done": false
+    },
+    {
+     "t": "Thermo I: gases, first law",
+     "done": false
+    },
+    {
+     "t": "Thermo II: second law, entropy, free energy",
+     "done": false
+    },
+    {
+     "t": "Formulas from memory",
+     "done": false
+    }
+   ]
+  }
+ ]
+}
