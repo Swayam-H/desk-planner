@@ -11,3 +11,5 @@ Claude outputs/
 # your github sync token for lively (read by the planner, never commit it)
 sync-token.txt
 sync-token.txt.txt
+
+__pycache__/

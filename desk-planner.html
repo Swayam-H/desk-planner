@@ -543,6 +543,9 @@ const $=id=>document.getElementById(id);
 /* Lively (a WebView2 host, unlike the android app): serves this page from a folder-specific https://….localhost address,
    so every copy added to Lively starts with empty storage; it also cancels downloads and passes no mouse wheel */
 const LIVELY=!!(window.chrome&&chrome.webview)&&!window.AndroidBridge;
+/* Ubuntu/Linux launcher (linux/desk-planner-wallpaper.py): a WebKitGTK window behind the desktop, served from
+   http://127.0.0.1:47811 so storage stays put; it saves downloads to ~/Downloads and sets this flag */
+const LINUX=!!window.deskPlannerLinux;
 const pad=n=>String(n).padStart(2,'0');
 const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const fromYmd=s=>new Date(s+'T00:00');
@@ -1830,7 +1833,7 @@ async function connectSync(token,auto){
 /* Lively: each copy added to it, and every start while its disk cache is off, begins with empty storage, and typing a
    token into the wallpaper may not work. So a token saved as sync-token.txt next to this file (Lively copies the whole
    folder) connects sync by itself, and an empty copy takes the synced data back. Delete the file to stop. */
-let fileTok=LIVELY?'look':'',fileTokSaid=false,fileTokValue='';
+let fileTok=LIVELY||LINUX?'look':'',fileTokSaid=false,fileTokValue='';
 async function tokenFromFile(){
   if(fileTok!=='look'||syncConnecting)return;
   let t='';
@@ -1969,6 +1972,7 @@ renderAll();runFocusTicker();
 /* empty storage (first run, or a new copy of the file in the wallpaper app): say how to bring the data back */
 if(S.fresh)say(window.AndroidBridge?'# new here. tap more, then sync, to bring in your laptop planner.':
   LIVELY?'# starting fresh: lively begins every new copy empty. sync brings your data back (see sync below).':
+  LINUX?'# starting fresh on linux. sync (or a sync-token.txt next to this file) brings your data back.':
   '# starting fresh. used the planner before? export from the old copy and import it here.');
 /* Redraw exactly when each minute changes: accurate clock, almost no CPU.
    The next tick is booked first, so an error while drawing can't stop the clock. */
