@@ -1,0 +1,196 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//desk-planner//endsem plan//EN
+BEGIN:VEVENT
+UID:endsem-20261120-1300@desk-planner
+DTSTART:20261120T130000
+DTEND:20261120T160000
+SUMMARY:dna: ER and EER\, then ER-to-relational mapping (A2\, A3)
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261120-1615@desk-planner
+DTSTART:20261120T161500
+DTEND:20261120T174500
+SUMMARY:science: QM 1: particle properties of waves (Beiser ch 2)
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261120-1830@desk-planner
+DTSTART:20261120T183000
+DTEND:20261120T200000
+SUMMARY:osn: L01–L04: what an OS is\, processes\, process API\, limited direct execution
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261120-2030@desk-planner
+DTSTART:20261120T203000
+DTEND:20261120T230000
+SUMMARY:dna: normalisation (A4): FDs\, closure\, minimal cover\, keys\, 2NF\, 3NF\, BCNF\, decomposition
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261121-0830@desk-planner
+DTSTART:20261121T083000
+DTEND:20261121T113000
+SUMMARY:dna: relational algebra 8.1–8.5 and tuple relational calculus 8.6 (A5)
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261121-1145@desk-planner
+DTSTART:20261121T114500
+DTEND:20261121T131500
+SUMMARY:science: QM 2: wave properties of particles (Beiser ch 3)
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261121-1430@desk-planner
+DTSTART:20261121T143000
+DTEND:20261121T173000
+SUMMARY:osn: L05–L09: scheduling\, MLFQ\, CFS and multiprocessor\; networks and transport layer
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261121-1800@desk-planner
+DTSTART:20261121T180000
+DTEND:20261121T193000
+SUMMARY:science: QM 3: atomic structure (Beiser ch 4\, no Rutherford appendix)
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261121-2000@desk-planner
+DTSTART:20261121T200000
+DTEND:20261121T223000
+SUMMARY:dna: SQL 6.1–6.4\, 7.1\, 7.3\, 7.4\, 10.1\, 10.2 (A6)
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261122-0830@desk-planner
+DTSTART:20261122T083000
+DTEND:20261122T113000
+SUMMARY:osn: L10–L13: address spaces\, segmentation\, paging and TLB\, smaller page tables\, swapping and policies
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261122-1145@desk-planner
+DTSTART:20261122T114500
+DTEND:20261122T134500
+SUMMARY:science: QM 4: quantum mechanics (Beiser ch 5)
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261122-1430@desk-planner
+DTSTART:20261122T143000
+DTEND:20261122T173000
+SUMMARY:dna: timed mock\, 3 hours
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261122-1800@desk-planner
+DTSTART:20261122T180000
+DTEND:20261122T193000
+SUMMARY:science: QM 5: hydrogen atom (Beiser 6.1–6.9\, no Zeeman). QM done
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261122-2000@desk-planner
+DTSTART:20261122T200000
+DTEND:20261122T223000
+SUMMARY:dna: mark the mock\, fix weak spots\, write your two A4 handwritten pages
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261123-0800@desk-planner
+DTSTART:20261123T080000
+DTEND:20261123T113000
+SUMMARY:dna: final pass: Excel queries (A1)\, your A4 pages\, redo every question you got wrong
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261123-1830@desk-planner
+DTSTART:20261123T183000
+DTEND:20261123T201500
+SUMMARY:osn: L14–L17: threads\, locks\, condition variables\, semaphores
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261123-2100@desk-planner
+DTSTART:20261123T210000
+DTEND:20261123T224500
+SUMMARY:osn: L18–L19 (new): files and directories\, file system implementation
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261124-0730@desk-planner
+DTSTART:20261124T073000
+DTEND:20261124T081500
+SUMMARY:osn: warm-up: one scheduling\, one paging and one transport question
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261124-1400@desk-planner
+DTSTART:20261124T140000
+DTEND:20261124T170000
+SUMMARY:science: intro\, scales\, modelling and nonlinear dynamics\; Newtonian mechanics\, one particle and many
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261124-1900@desk-planner
+DTSTART:20261124T190000
+DTEND:20261124T220000
+SUMMARY:science: calculus of variations\, Lagrangian\, Hamiltonian\, phase space\, two-body problem
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261125-0900@desk-planner
+DTSTART:20261125T090000
+DTEND:20261125T123000
+SUMMARY:aad: Lec 1–5\, 10: numbers\, divide and conquer\, lower bounds\, FFT\, BFS\, shortest paths\, MST\, Huffman
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261125-1330@desk-planner
+DTSTART:20261125T133000
+DTEND:20261125T170000
+SUMMARY:aad: Lec 6–9\, 11–18: stable matching\, Hall's theorem\, max matchings\, DP\, max flow and min cut
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261125-1715@desk-planner
+DTSTART:20261125T171500
+DTEND:20261125T181500
+SUMMARY:prob: practice: problems from chunks 1–4
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261125-1830@desk-planner
+DTSTART:20261125T183000
+DTEND:20261125T201500
+SUMMARY:aad: Lec 19–22: randomized MaxCut\, randomized hashing and Ctrl-F\, balanced parentheses\, NP and reductions
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261125-2045@desk-planner
+DTSTART:20261125T204500
+DTEND:20261125T223000
+SUMMARY:aad: timed practice
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261126-1400@desk-planner
+DTSTART:20261126T140000
+DTEND:20261126T163000
+SUMMARY:prob: chunks 1–4: probability spaces to conditioning\, sums and MGFs
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261126-1700@desk-planner
+DTSTART:20261126T170000
+DTEND:20261126T190000
+SUMMARY:prob: later chapters\, quick pass: sampling\, convergence\, random vectors\, L21–L24 inference\, linear regression
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261126-1930@desk-planner
+DTSTART:20261126T193000
+DTEND:20261126T220000
+SUMMARY:prob: timed past paper
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261127-1400@desk-planner
+DTSTART:20261127T140000
+DTEND:20261127T170000
+SUMMARY:science: special relativity
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261127-1800@desk-planner
+DTSTART:20261127T180000
+DTEND:20261127T200000
+SUMMARY:science: thermodynamics I\, gases and the first law (1A–2E)
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261127-2030@desk-planner
+DTSTART:20261127T203000
+DTEND:20261127T223000
+SUMMARY:science: thermodynamics II\, second law\, entropy\, free energy (3A–3E\, 4A–4B)
+END:VEVENT
+BEGIN:VEVENT
+UID:endsem-20261128-0830@desk-planner
+DTSTART:20261128T083000
+DTEND:20261128T113000
+SUMMARY:science: write every formula from memory\, quick QM recap\, redo wrong problems
+END:VEVENT
+END:VCALENDAR
